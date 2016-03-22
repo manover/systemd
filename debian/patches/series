@@ -52,3 +52,4 @@ debian/Revert-core-set-RLIMIT_CORE-to-unlimited-by-default.patch
 debian/Revert-Revert-networkd-ndisc-revert-to-letting-the-k.patch
 debian/Revert-core-enable-TasksMax-for-all-services-by-default-a.patch
 improved-dbus-generator.patch
+systemd-notify-wait-parameter.patch
