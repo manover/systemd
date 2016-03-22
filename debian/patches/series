@@ -22,3 +22,4 @@ debian/Skip-filesystem-check-if-already-done-by-the-initram.patch
 debian/Revert-core-one-step-back-again-for-nspawn-we-actual.patch
 debian/Revert-core-set-RLIMIT_CORE-to-unlimited-by-default.patch
 debian/Revert-core-enable-TasksMax-for-all-services-by-default-a.patch
+improved-dbus-generator.patch
