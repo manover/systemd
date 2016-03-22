@@ -54,8 +54,7 @@ Architecture: linux-any
 Multi-Arch: foreign
 Section: admin
 Priority: important
-Recommends: libpam-systemd,
-            dbus
+Recommends: libpam-systemd
 Suggests: systemd-ui,
           systemd-container,
           policykit-1
@@ -77,6 +76,7 @@ Breaks: lvm2 (<< 2.02.104-1),
         laptop-mode-tools (<< 1.68~),
         ${Breaks:rcs-compat}
 Replaces: udev (<< 228-5),
+Provides: dbus (= 1.10.0)
 Conflicts: klogd
 Description: system and service manager
  systemd is a system and service manager for Linux. It provides aggressive
