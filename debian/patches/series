@@ -26,3 +26,4 @@ debian/Revert-core-enable-TasksMax-for-all-services-by-default-a.patch
 debian/Revert-units-add-a-basic-SystemCallFilter-3471.patch
 debian/Revert-pid1-reconnect-to-the-console-before-being-re-exec.patch
 improved-dbus-generator.patch
+systemd-notify-wait-parameter.patch
