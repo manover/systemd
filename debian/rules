@@ -49,11 +49,19 @@ CONFFLAGS = \
 	--with-system-uid-max=999 \
 	--with-system-gid-max=999
 
+ifeq (x32,$(DEB_HOST_ARCH))
+EFI_LIBDIR := /usr/lib/x86_64-linux-gnu
+export EFI_CC = $(CC) -m64
+else
+EFI_LIBDIR := /usr/lib/$(DEB_HOST_MULTIARCH)
+endif
+
 CONFFLAGS_deb = \
 	--enable-selinux \
 	--enable-hwdb \
 	--enable-sysusers \
 	--enable-efi \
+	--with-efi-libdir=$(EFI_LIBDIR) \
 	PYTHON=python3
 
 ifeq (, $(filter stage1, $(DEB_BUILD_PROFILES)))
