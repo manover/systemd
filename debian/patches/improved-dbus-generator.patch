@@ -1,6 +1,6 @@
 --- a/src/dbus1-generator/dbus1-generator.c
 +++ b/src/dbus1-generator/dbus1-generator.c
-@@ -261,24 +261,91 @@ static int link_busnames_target(const ch
+@@ -259,24 +259,91 @@ static int link_busnames_target(const ch
          return 0;
  }
 
@@ -109,7 +109,7 @@
 
          return 0;
  }
-@@ -306,6 +373,7 @@ int main(int argc, char *argv[]) {
+@@ -304,6 +371,7 @@ int main(int argc, char *argv[]) {
          if (!is_kdbus_available())
                  return 0;
 
@@ -117,7 +117,7 @@
          r = cg_pid_get_owner_uid(0, NULL);
          if (r >= 0) {
                  path = "/usr/share/dbus-1/services";
-@@ -325,7 +393,7 @@ int main(int argc, char *argv[]) {
+@@ -323,7 +391,7 @@ int main(int argc, char *argv[]) {
          if (q < 0)
                  r = q;
 
