@@ -71,10 +71,7 @@ CONFFLAGS = \
 CONFFLAGS += $(shell grep -qE 'stretch|ubuntu' /etc/os-release && echo --with-default-dnssec=no)
 
 ifeq (x32,$(DEB_HOST_ARCH))
-EFI_LIBDIR := /usr/lib/x86_64-linux-gnu
 export EFI_CC = $(CC) -m64
-else
-EFI_LIBDIR := /usr/lib/$(DEB_HOST_MULTIARCH)
 endif
 
 CONFFLAGS_deb = \
@@ -82,7 +79,7 @@ CONFFLAGS_deb = \
 	--enable-hwdb \
 	--enable-sysusers \
 	--enable-efi \
-	--with-efi-libdir=$(EFI_LIBDIR) \
+	--with-efi-libdir=/usr/lib/$(DEB_HOST_MULTIARCH) \
 	PYTHON=python3
 
 ifeq (, $(filter stage1, $(DEB_BUILD_PROFILES)))
