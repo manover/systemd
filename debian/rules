@@ -68,12 +68,21 @@ CONFFLAGS = \
 # default on stable Debian or any Ubuntu releases
 CONFFLAGS += $(shell grep -qE 'stretch|ubuntu' /etc/os-release && echo -Ddefault-dnssec=no)
 
+ifeq (x32,$(DEB_HOST_ARCH))
+EFI_LIBDIR := /usr/lib/x86_64-linux-gnu
+export EFI_CC = $(CC) -m64
+else
+EFI_LIBDIR := /usr/lib/$(DEB_HOST_MULTIARCH)
+endif
+
 CONFFLAGS_deb = \
 	-Dselinux=true \
 	-Dhwdb=true \
 	-Dsysusers=true \
 	-Dinstall-tests=true \
 	-Defi=true
+	--with-efi-libdir=$(EFI_LIBDIR) \
+	PYTHON=python3
 
 ifeq (, $(filter stage1, $(DEB_BUILD_PROFILES)))
 CONFFLAGS_deb += \
