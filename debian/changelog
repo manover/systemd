@@ -143,6 +143,12 @@ systemd (230-3) unstable; urgency=medium
 
  -- Martin Pitt <mpitt@debian.org>  Tue, 21 Jun 2016 23:51:07 +0200
 
+systemd (230-2.1) unstable; urgency=medium
+
+  * Rebase on 230-2
+
+ -- Denis Bychkov <manover@gmail.com>  Tue, 24 May 2016 13:16:00 -0400
+
 systemd (230-2) unstable; urgency=medium
 
   [ Martin Pitt ]
@@ -182,6 +188,15 @@ systemd (230-1) unstable; urgency=medium
   * Remove obsolete /etc/systemd/bootchart.conf conffile on upgrades.
 
  -- Martin Pitt <mpitt@debian.org>  Mon, 23 May 2016 09:42:51 +0200
+
+systemd (229-6.1) unstable; urgency=medium
+
+  * Rebase on 229-6
+  * Set path to gnu-efi library
+  * Try to use amd64 multiarch dir on x32 in case gnu-efi is installed as
+    amd64 cross-library
+
+ -- Denis Bychkov <manover@gmail.com>  Thu, 12 May 2016 12:15:38 -0400
 
 systemd (229-6) unstable; urgency=medium
 
@@ -544,6 +559,12 @@ systemd (228-4) unstable; urgency=medium
 
  -- Martin Pitt <mpitt@debian.org>  Mon, 11 Jan 2016 07:12:40 +0100
 
+systemd (228-3.1) unstable; urgency=medium
+
+  * Rebased on 228-3
+
+ -- Denis Bychkov <manover@gmail.com>  Sat, 02 Jan 2016 12:36:21 -0500
+
 systemd (228-3) unstable; urgency=medium
 
   [ Martin Pitt ]
@@ -612,6 +633,20 @@ systemd (228-3) unstable; urgency=medium
 
  -- Martin Pitt <mpitt@debian.org>  Sat, 02 Jan 2016 17:42:56 +0100
 
+systemd (228-2.2) unstable; urgency=medium
+
+  * systemd-notify now takes optional --wait parameter
+    to sleep N seconds after sending a message in order
+    to work around the race condition
+
+ -- Denis Bychkov <manover@gmail.com>  Fri, 11 Dec 2015 19:03:50 -0500
+
+systemd (228-2.1) unstable; urgency=medium
+
+  * Rebased on 228-3
+
+ -- Denis Bychkov <manover@gmail.com>  Sun, 18 Nov 2015 01:35:00 -0400
+
 systemd (228-2) unstable; urgency=medium
 
   * Remove wrong endianness conversion in test-siphash24 to fix FTBFS on
@@ -620,6 +655,12 @@ systemd (228-2) unstable; urgency=medium
     backporting to jessie. (Closes: #805497)
 
  -- Martin Pitt <mpitt@debian.org>  Thu, 19 Nov 2015 11:37:45 +0100
+
+systemd (228-1.1) unstable; urgency=medium
+
+  * Fix statfs_f_type_t type error on x32 arch (should be 64bit, not 32bit)
+
+ -- Denis Bychkov <manover@gmail.com>  Wed, 18 Nov 2015 14:09:54 -0500
 
 systemd (228-1) unstable; urgency=medium
 
@@ -794,6 +835,18 @@ systemd (226-3) unstable; urgency=medium
 
  -- Michael Biebl <biebl@debian.org>  Sat, 19 Sep 2015 19:06:51 +0200
 
+systemd (226-2.2) unstable; urgency=medium
+
+  * systemd package now provides virtual dbus 1.0.0 service
+
+ -- Denis Bychkov <manover@gmail.com>  Tue, 15 Sep 2015 22:46:58 -0400
+
+systemd (226-2.1) unstable; urgency=medium
+
+  * New debian release.
+
+ -- Denis Bychkov <manover@gmail.com>  Tue, 15 Sep 2015 11:08:35 -0400
+
 systemd (226-2) unstable; urgency=medium
 
   * debian/udev.init: Mount /dev file system with nosuid. (LP: #1450960)
@@ -803,6 +856,20 @@ systemd (226-2) unstable; urgency=medium
     and similar environments. (Closes: #799034)
 
  -- Martin Pitt <mpitt@debian.org>  Tue, 15 Sep 2015 15:21:09 +0200
+
+systemd (226-1.3) unstable; urgency=medium
+
+  * Remove the dbu1-generator workaround
+
+ -- Denis Bychkov <manover@gmail.com>  Thu, 10 Sep 2015 17:09:51 -0400
+
+systemd (226-1.2) unstable; urgency=medium
+
+  * New upstream release
+  * Integrate local changes
+  * Workaroud in dbus1_generator
+
+ -- Denis Bychkov <manover@gmail.com>  Thu, 10 Sep 2015 14:53:31 -0400
 
 systemd (226-1) unstable; urgency=medium
 
