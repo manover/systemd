@@ -201,6 +201,12 @@ systemd (230-1) unstable; urgency=medium
 
  -- Martin Pitt <mpitt@debian.org>  Mon, 23 May 2016 09:42:51 +0200
 
+systemd (229-6.2) unstable; urgency=medium
+
+  * Use x32 native gnu-efi package, remove dir exception
+
+ -- Denis Bychkov <manover@gmail.com>  Fri, 13 May 2016 22:25:48 -0400
+
 systemd (229-6.1) unstable; urgency=medium
 
   * Rebase on 229-6
