@@ -54,6 +54,7 @@
 /systemd-backlight
 /systemd-binfmt
 /systemd-bootx64.efi
+/systemd-bus-proxyd
 /systemd-cat
 /systemd-cgls
 /systemd-cgroups-agent
@@ -149,6 +150,7 @@
 /test-bus-match
 /test-bus-objects
 /test-bus-policy
+/test-bus-proxy
 /test-bus-server
 /test-bus-signature
 /test-bus-zero-copy

@@ -1,3 +1,4 @@
+/systemd-bus-proxyd.service.m4
 /user@.service.m4
 /console-getty.service
 /console-getty.service.m4
@@ -22,6 +23,7 @@
 /systemd-ask-password-wall.service
 /systemd-backlight@.service
 /systemd-binfmt.service
+/systemd-bus-proxyd.service
 /systemd-coredump@.service
 /systemd-firstboot.service
 /systemd-fsck-root.service

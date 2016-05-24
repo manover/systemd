@@ -397,6 +397,7 @@ rootlibexec_PROGRAMS = \
 	systemd-ac-power \
 	systemd-sysctl \
 	systemd-sleep \
+	systemd-bus-proxyd \
 	systemd-socket-proxyd \
 	systemd-update-done
 
@@ -1493,6 +1494,7 @@ tests += \
 	test-ratelimit \
 	test-condition \
 	test-uid-range \
+	test-bus-policy \
 	test-locale-util \
 	test-execute \
 	test-copy \
@@ -2040,11 +2042,14 @@ test_unaligned_SOURCES = \
 test_tables_SOURCES = \
 	src/test/test-tables.c \
 	src/shared/test-tables.h \
+	src/bus-proxyd/bus-xml-policy.c \
+	src/bus-proxyd/bus-xml-policy.h \
 	src/journal/journald-server.c \
 	src/journal/journald-server.h
 
 test_tables_CPPFLAGS = \
-	$(AM_CPPFLAGS)
+	$(AM_CPPFLAGS) \
+	-I$(top_srcdir)/src/bus-proxyd
 
 test_tables_CFLAGS = \
 	$(AM_CFLAGS) \
@@ -2289,6 +2294,13 @@ test_conf_parser_SOURCES = \
 	src/test/test-conf-parser.c
 
 test_conf_parser_LDADD = \
+	libshared.la
+
+test_bus_policy_SOURCES = \
+	src/bus-proxyd/test-bus-xml-policy.c
+
+test_bus_policy_LDADD = \
+	libbus-proxy-core.la \
 	libshared.la
 
 test_af_list_SOURCES = \
@@ -3070,11 +3082,58 @@ systemd_run_LDADD = \
 	libshared.la
 
 # ------------------------------------------------------------------------------
+noinst_LTLIBRARIES += \
+	libbus-proxy-core.la
+
+libbus_proxy_core_la_SOURCES = \
+	src/bus-proxyd/bus-xml-policy.c \
+	src/bus-proxyd/bus-xml-policy.h \
+	src/bus-proxyd/driver.c \
+	src/bus-proxyd/driver.h \
+	src/bus-proxyd/proxy.c \
+	src/bus-proxyd/proxy.h \
+	src/bus-proxyd/synthesize.c \
+	src/bus-proxyd/synthesize.h
+
+libbus_proxy_core_la_LIBADD = \
+	libshared.la
+
+systemd_bus_proxyd_SOURCES = \
+	src/bus-proxyd/bus-proxyd.c
+
+systemd_bus_proxyd_LDADD = \
+	libbus-proxy-core.la \
+	libshared.la
+
 systemd_stdio_bridge_SOURCES = \
-	src/stdio-bridge/stdio-bridge.c
+	src/bus-proxyd/stdio-bridge.c
 
 systemd_stdio_bridge_LDADD = \
+	libbus-proxy-core.la \
 	libshared.la
+
+nodist_systemunit_DATA += \
+	units/systemd-bus-proxyd.service
+
+dist_systemunit_DATA += \
+	units/systemd-bus-proxyd.socket
+
+nodist_userunit_DATA += \
+	units/user/systemd-bus-proxyd.service
+
+dist_userunit_DATA += \
+	units/user/systemd-bus-proxyd.socket
+
+EXTRA_DIST += \
+	units/systemd-bus-proxyd.service.m4.in \
+	units/user/systemd-bus-proxyd.service.in
+
+if HAVE_SMACK
+bus-proxyd-set-cap-hook:
+	-$(SETCAP) cap_mac_admin+ei $(DESTDIR)$(rootlibexecdir)/systemd-bus-proxyd
+
+INSTALL_EXEC_HOOKS += bus-proxyd-set-cap-hook
+endif
 
 # ------------------------------------------------------------------------------
 systemd_tty_ask_password_agent_SOURCES = \
@@ -3238,6 +3297,7 @@ tests += \
 	test-bus-cleanup \
 	test-bus-server \
 	test-bus-match \
+	test-bus-proxy \
 	test-bus-kernel \
 	test-bus-kernel-bloom \
 	test-bus-zero-copy \
@@ -3328,6 +3388,12 @@ test_bus_match_SOURCES = \
 	src/libsystemd/sd-bus/test-bus-match.c
 
 test_bus_match_LDADD = \
+	libshared.la
+
+test_bus_proxy_SOURCES = \
+	src/libsystemd/sd-bus/test-bus-proxy.c
+
+test_bus_proxy_LDADD = \
 	libshared.la
 
 test_bus_kernel_SOURCES = \
