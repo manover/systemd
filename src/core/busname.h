@@ -23,7 +23,6 @@ typedef struct BusName BusName;
 typedef struct BusNamePolicy BusNamePolicy;
 
 #include "unit.h"
-#include "bus-policy.h"
 
 typedef enum BusNameResult {
         BUSNAME_SUCCESS,
