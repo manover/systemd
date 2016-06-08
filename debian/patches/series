@@ -53,3 +53,5 @@ debian/Revert-Revert-networkd-ndisc-revert-to-letting-the-k.patch
 debian/Revert-core-enable-TasksMax-for-all-services-by-default-a.patch
 improved-dbus-generator.patch
 systemd-notify-wait-parameter.patch
+revert-kdbus-custom-endpoint-removal.patch
+revert-kdbus-proxy-removal.patch
