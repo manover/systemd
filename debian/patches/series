@@ -23,3 +23,5 @@ debian/Let-graphical-session-pre.target-be-manually-started.patch
 debian/Add-env-variable-for-machine-ID-path.patch
 improved-dbus-generator.patch
 systemd-notify-wait-parameter.patch
+revert-kdbus-custom-endpoint-removal.patch
+revert-kdbus-proxy-removal.patch
