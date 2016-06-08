@@ -1,0 +1,789 @@
+commit 9ca6ff50ab7af9d122521c5bb9cc8201cb38181a
+Author: Daniel Mack <daniel@zonque.org>
+Date:   Thu Feb 11 22:12:04 2016 +0100
+
+    Remove kdbus custom endpoint support
+
+    This feature will not be used anytime soon, so remove a bit of cruft.
+
+    The BusPolicy= config directive will stay around as compat noop.
+
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -1129,6 +1129,8 @@ libcore_la_SOURCES = \
+	src/core/socket.h \
+	src/core/busname.c \
+	src/core/busname.h \
++	src/core/bus-endpoint.c \
++	src/core/bus-endpoint.h \
+	src/core/bus-policy.c \
+	src/core/bus-policy.h \
+	src/core/target.c \
+--- a/man/systemd.service.xml
++++ b/man/systemd.service.xml
+@@ -268,6 +268,42 @@
+       </varlistentry>
+
+       <varlistentry>
++        <term><varname>BusPolicy=</varname></term>
++
++        <listitem><para>If specified, a custom kdbus
++        endpoint will be created and installed as the default bus node
++        for the service. Such a custom endpoint can hold an own set of
++        policy rules that are enforced on top of the bus-wide ones.
++        The custom endpoint is named after the service it was created
++        for, and its node will be bind-mounted over the default bus
++        node location, so the service can only access the bus through
++        its own endpoint. Note that custom bus endpoints default to a
++        "deny all" policy. Hence, if at least one
++        <varname>BusPolicy=</varname> directive is given, you have to
++        make sure to add explicit rules for everything the service
++        should be able to do.</para>
++        <para>The value of this directive is comprised
++        of two parts; the bus name, and a verb to
++        specify to granted access, which is one of
++        <option>see</option>,
++        <option>talk</option>, or
++        <option>own</option>.
++        <option>talk</option> implies
++        <option>see</option>, and <option>own</option>
++        implies both <option>talk</option> and
++        <option>see</option>.
++        If multiple access levels are specified for the
++        same bus name, the most powerful one takes
++        effect.
++        </para>
++        <para>Examples:</para>
++        <programlisting>BusPolicy=org.freedesktop.systemd1 talk</programlisting>
++        <programlisting>BusPolicy=org.foo.bar see</programlisting>
++        <para>This option is only available on kdbus enabled systems.</para>
++        </listitem>
++      </varlistentry>
++
++      <varlistentry>
+         <term><varname>ExecStart=</varname></term>
+         <listitem><para>Commands with their arguments that are
+         executed when this service is started. The value is split into
+--- a/src/basic/exit-status.c
++++ b/src/basic/exit-status.c
+@@ -147,6 +147,9 @@ const char* exit_status_to_string(ExitSt
+                 case EXIT_MAKE_STARTER:
+                         return "MAKE_STARTER";
+
++                case EXIT_BUS_ENDPOINT:
++                        return "BUS_ENDPOINT";
++
+                 case EXIT_SMACK_PROCESS_LABEL:
+                         return "SMACK_PROCESS_LABEL";
+                 }
+--- a/src/basic/exit-status.h
++++ b/src/basic/exit-status.h
+@@ -77,6 +77,7 @@ typedef enum ExitStatus {
+         EXIT_RUNTIME_DIRECTORY,
+         EXIT_MAKE_STARTER,
+         EXIT_CHOWN,
++        EXIT_BUS_ENDPOINT,
+         EXIT_SMACK_PROCESS_LABEL,
+ } ExitStatus;
+
+--- /dev/null
++++ b/src/core/bus-endpoint.c
+@@ -0,0 +1,135 @@
++/***
++  This file is part of systemd.
++
++  Copyright 2014 Daniel Mack
++
++  systemd is free software; you can redistribute it and/or modify it
++  under the terms of the GNU Lesser General Public License as published by
++  the Free Software Foundation; either version 2.1 of the License, or
++  (at your option) any later version.
++
++  systemd is distributed in the hope that it will be useful, but
++  WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++  Lesser General Public License for more details.
++
++  You should have received a copy of the GNU Lesser General Public License
++  along with systemd; If not, see <http://www.gnu.org/licenses/>.
++***/
++
++#include <stdlib.h>
++
++#include "alloc-util.h"
++#include "bus-endpoint.h"
++#include "bus-kernel.h"
++#include "bus-policy.h"
++#include "kdbus.h"
++
++int bus_kernel_set_endpoint_policy(int fd, uid_t uid, BusEndpoint *ep) {
++
++        struct kdbus_cmd *update;
++        struct kdbus_item *n;
++        BusEndpointPolicy *po;
++        Iterator i;
++        size_t size;
++        int r;
++
++        size = ALIGN8(offsetof(struct kdbus_cmd, items));
++
++        HASHMAP_FOREACH(po, ep->policy_hash, i) {
++                size += ALIGN8(offsetof(struct kdbus_item, str) + strlen(po->name) + 1);
++                size += ALIGN8(offsetof(struct kdbus_item, policy_access) + sizeof(struct kdbus_policy_access));
++        }
++
++        update = alloca0_align(size, 8);
++        update->size = size;
++
++        n = update->items;
++
++        HASHMAP_FOREACH(po, ep->policy_hash, i) {
++                n->type = KDBUS_ITEM_NAME;
++                n->size = offsetof(struct kdbus_item, str) + strlen(po->name) + 1;
++                strcpy(n->str, po->name);
++                n = KDBUS_ITEM_NEXT(n);
++
++                n->type = KDBUS_ITEM_POLICY_ACCESS;
++                n->size = offsetof(struct kdbus_item, policy_access) + sizeof(struct kdbus_policy_access);
++
++                n->policy_access.type = KDBUS_POLICY_ACCESS_USER;
++                n->policy_access.access = bus_kernel_translate_access(po->access);
++                n->policy_access.id = uid;
++
++                n = KDBUS_ITEM_NEXT(n);
++        }
++
++        r = ioctl(fd, KDBUS_CMD_ENDPOINT_UPDATE, update);
++        if (r < 0)
++                return -errno;
++
++        return 0;
++}
++
++int bus_endpoint_new(BusEndpoint **ep) {
++        assert(ep);
++
++        *ep = new0(BusEndpoint, 1);
++        if (!*ep)
++                return -ENOMEM;
++
++        return 0;
++}
++
++int bus_endpoint_add_policy(BusEndpoint *ep, const char *name, BusPolicyAccess access) {
++        _cleanup_free_ BusEndpointPolicy *po = NULL;
++        _cleanup_free_ char *key = NULL;
++        int r;
++
++        assert(ep);
++        assert(name);
++        assert(access > _BUS_POLICY_ACCESS_INVALID && access < _BUS_POLICY_ACCESS_MAX);
++
++        /* check if we already have this name in the policy list. If we do, see if the new access level
++         * is higher than the exising one, and upgrade the entry in that case. Otherwise, do nothing.
++         */
++
++        if (ep->policy_hash) {
++                po = hashmap_get(ep->policy_hash, name);
++                if (po) {
++                        if (po->access < access)
++                                po->access = access;
++
++                        return 0;
++                }
++        } else {
++                ep->policy_hash = hashmap_new(&string_hash_ops);
++                if (!ep->policy_hash)
++                        return -ENOMEM;
++        }
++
++        po = new0(BusEndpointPolicy, 1);
++        if (!po)
++                return -ENOMEM;
++
++        key = strdup(name);
++        if (!key)
++                return -ENOMEM;
++
++        po->name = key;
++        po->access = access;
++
++        r = hashmap_put(ep->policy_hash, key, po);
++        if (r < 0)
++                return r;
++
++        po = NULL;
++        key = NULL;
++        return 0;
++}
++
++void bus_endpoint_free(BusEndpoint *endpoint) {
++        if (!endpoint)
++                return;
++
++        hashmap_free_free_free(endpoint->policy_hash);
++        free(endpoint);
++}
+--- /dev/null
++++ b/src/core/bus-endpoint.h
+@@ -0,0 +1,42 @@
++#pragma once
++
++/***
++  This file is part of systemd.
++
++  Copyright 2014 Daniel Mack
++
++  systemd is free software; you can redistribute it and/or modify it
++  under the terms of the GNU Lesser General Public License as published by
++  the Free Software Foundation; either version 2.1 of the License, or
++  (at your option) any later version.
++
++  systemd is distributed in the hope that it will be useful, but
++  WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++  Lesser General Public License for more details.
++
++  You should have received a copy of the GNU Lesser General Public License
++  along with systemd; If not, see <http://www.gnu.org/licenses/>.
++***/
++
++typedef struct BusEndpoint BusEndpoint;
++typedef struct BusEndpointPolicy BusEndpointPolicy;
++
++#include "bus-policy.h"
++#include "hashmap.h"
++
++struct BusEndpointPolicy {
++        char *name;
++        BusPolicyAccess access;
++};
++
++struct BusEndpoint {
++        Hashmap *policy_hash;
++};
++
++int bus_endpoint_new(BusEndpoint **ep);
++void bus_endpoint_free(BusEndpoint *endpoint);
++
++int bus_endpoint_add_policy(BusEndpoint *ep, const char *name, BusPolicyAccess access);
++
++int bus_kernel_set_endpoint_policy(int fd, uid_t uid, BusEndpoint *ep);
+--- a/src/core/busname.h
++++ b/src/core/busname.h
+@@ -23,7 +23,6 @@ typedef struct BusName BusName;
+ typedef struct BusNamePolicy BusNamePolicy;
+
+ #include "unit.h"
+-#include "bus-policy.h"
+
+ typedef enum BusNameResult {
+         BUSNAME_SUCCESS,
+--- a/src/core/execute.c
++++ b/src/core/execute.c
+@@ -58,6 +58,7 @@
+ #endif
+ #include "async.h"
+ #include "barrier.h"
++#include "bus-endpoint.h"
+ #include "cap-list.h"
+ #include "capability-util.h"
+ #include "def.h"
+@@ -1365,6 +1366,9 @@ static bool exec_needs_mount_namespace(
+         if (context->private_tmp && runtime && (runtime->tmp_dir || runtime->var_tmp_dir))
+                 return true;
+
++        if (params->bus_endpoint_path)
++                return true;
++
+         if (context->private_devices ||
+             context->protect_system != PROTECT_SYSTEM_NO ||
+             context->protect_home != PROTECT_HOME_NO)
+@@ -1398,6 +1402,9 @@ static int close_remaining_fds(
+                 n_dont_close += n_fds;
+         }
+
++        if (params->bus_endpoint_fd >= 0)
++                dont_close[n_dont_close++] = params->bus_endpoint_fd;
++
+         if (runtime) {
+                 if (runtime->netns_storage_socket[0] >= 0)
+                         dont_close[n_dont_close++] = runtime->netns_storage_socket[0];
+@@ -1627,6 +1634,16 @@ static int exec_child(
+                 }
+         }
+
++        if (params->bus_endpoint_fd >= 0 && context->bus_endpoint) {
++                uid_t ep_uid = (uid == UID_INVALID) ? 0 : uid;
++
++                r = bus_kernel_set_endpoint_policy(params->bus_endpoint_fd, ep_uid, context->bus_endpoint);
++                if (r < 0) {
++                        *exit_status = EXIT_BUS_ENDPOINT;
++                        return r;
++                }
++        }
++
+         /* If delegation is enabled we'll pass ownership of the cgroup
+          * (but only in systemd's own controller hierarchy!) to the
+          * user of the new process. */
+@@ -1749,6 +1766,7 @@ static int exec_child(
+                                 context->inaccessible_dirs,
+                                 tmp,
+                                 var,
++                                params->bus_endpoint_path,
+                                 context->private_devices,
+                                 context->protect_home,
+                                 context->protect_system,
+@@ -2152,6 +2170,9 @@ void exec_context_done(ExecContext *c) {
+         c->address_families = set_free(c->address_families);
+
+         c->runtime_directory = strv_free(c->runtime_directory);
++
++        bus_endpoint_free(c->bus_endpoint);
++        c->bus_endpoint = NULL;
+ }
+
+ int exec_context_destroy_runtime_directory(ExecContext *c, const char *runtime_prefix) {
+--- a/src/core/execute.h
++++ b/src/core/execute.h
+@@ -30,6 +30,7 @@ typedef struct ExecParameters ExecParame
+ #include <stdio.h>
+ #include <sys/capability.h>
+
++#include "bus-endpoint.h"
+ #include "fdset.h"
+ #include "list.h"
+ #include "missing.h"
+@@ -197,6 +198,9 @@ struct ExecContext {
+         bool ioprio_set:1;
+         bool cpu_sched_set:1;
+         bool no_new_privileges_set:1;
++
++        /* custom dbus enpoint */
++        BusEndpoint *bus_endpoint;
+ };
+
+ #include "cgroup-util.h"
+@@ -227,6 +231,9 @@ struct ExecParameters {
+
+         int *idle_pipe;
+
++        char *bus_endpoint_path;
++        int bus_endpoint_fd;
++
+         int stdin_fd;
+         int stdout_fd;
+         int stderr_fd;
+--- a/src/core/load-fragment-gperf.gperf.m4
++++ b/src/core/load-fragment-gperf.gperf.m4
+@@ -251,7 +251,7 @@ Service.BusName,                 config_
+ Service.FileDescriptorStoreMax,  config_parse_unsigned,              0,                             offsetof(Service, n_fd_store_max)
+ Service.NotifyAccess,            config_parse_notify_access,         0,                             offsetof(Service, notify_access)
+ Service.Sockets,                 config_parse_service_sockets,       0,                             0
+-Service.BusPolicy,               config_parse_warn_compat,           DISABLED_LEGACY,               0
++Service.BusPolicy,               config_parse_bus_endpoint_policy,   0,                             offsetof(Service, exec_context)
+ Service.USBFunctionDescriptors,  config_parse_path,                  0,                             offsetof(Service, usb_function_descriptors)
+ Service.USBFunctionStrings,      config_parse_path,                  0,                             offsetof(Service, usb_function_strings)
+ EXEC_CONTEXT_CONFIG_ITEMS(Service)m4_dnl
+--- a/src/core/load-fragment.c
++++ b/src/core/load-fragment.c
+@@ -1867,6 +1867,59 @@ int config_parse_bus_policy(
+         return 0;
+ }
+
++int config_parse_bus_endpoint_policy(
++                const char *unit,
++                const char *filename,
++                unsigned line,
++                const char *section,
++                unsigned section_line,
++                const char *lvalue,
++                int ltype,
++                const char *rvalue,
++                void *data,
++                void *userdata) {
++
++        _cleanup_free_ char *name = NULL;
++        BusPolicyAccess access;
++        ExecContext *c = data;
++        char *access_str;
++        int r;
++
++        assert(filename);
++        assert(lvalue);
++        assert(rvalue);
++        assert(data);
++
++        name = strdup(rvalue);
++        if (!name)
++                return log_oom();
++
++        access_str = strpbrk(name, WHITESPACE);
++        if (!access_str) {
++                log_syntax(unit, LOG_ERR, filename, line, 0, "Invalid endpoint policy value '%s'", rvalue);
++                return 0;
++        }
++
++        *access_str = '\0';
++        access_str++;
++        access_str += strspn(access_str, WHITESPACE);
++
++        access = bus_policy_access_from_string(access_str);
++        if (access <= _BUS_POLICY_ACCESS_INVALID ||
++            access >= _BUS_POLICY_ACCESS_MAX) {
++                log_syntax(unit, LOG_ERR, filename, line, 0, "Invalid endpoint policy access type '%s'", access_str);
++                return 0;
++        }
++
++        if (!c->bus_endpoint) {
++                r = bus_endpoint_new(&c->bus_endpoint);
++                if (r < 0)
++                        return log_error_errno(r, "Failed to create bus endpoint object: %m");
++        }
++
++        return bus_endpoint_add_policy(c->bus_endpoint, name, access);
++}
++
+ int config_parse_working_directory(
+                 const char *unit,
+                 const char *filename,
+--- a/src/core/load-fragment.h
++++ b/src/core/load-fragment.h
+@@ -66,6 +66,7 @@ int config_parse_service_sockets(const c
+ int config_parse_busname_service(const char *unit, const char *filename, unsigned line, const char *section, unsigned section_line, const char *lvalue, int ltype, const char *rvalue, void *data, void *userdata);
+ int config_parse_bus_policy(const char *unit, const char *filename, unsigned line, const char *section, unsigned section_line, const char *lvalue, int ltype, const char *rvalue, void *data, void *userdata);
+ int config_parse_bus_policy_world(const char *unit, const char *filename, unsigned line, const char *section, unsigned section_line, const char *lvalue, int ltype, const char *rvalue, void *data, void *userdata);
++int config_parse_bus_endpoint_policy(const char *unit, const char *filename, unsigned line, const char *section, unsigned section_line, const char *lvalue, int ltype, const char *rvalue, void *data, void *userdata);
+ int config_parse_unit_env_file(const char *unit, const char *filename, unsigned line, const char *section, unsigned section_line, const char *lvalue, int ltype, const char *rvalue, void *data, void *userdata);
+ int config_parse_ip_tos(const char *unit, const char *filename, unsigned line, const char *section, unsigned section_line, const char *lvalue, int ltype, const char *rvalue, void *data, void *userdata);
+ int config_parse_unit_condition_path(const char *unit, const char *filename, unsigned line, const char *section, unsigned section_line, const char *lvalue, int ltype, const char *rvalue, void *data, void *userdata);
+--- a/src/core/mount.c
++++ b/src/core/mount.c
+@@ -697,6 +697,7 @@ static int mount_spawn(Mount *m, ExecCom
+                 .apply_permissions = true,
+                 .apply_chroot      = true,
+                 .apply_tty_stdin   = true,
++                .bus_endpoint_fd   = -1,
+                 .stdin_fd          = -1,
+                 .stdout_fd         = -1,
+                 .stderr_fd         = -1,
+--- a/src/core/namespace.c
++++ b/src/core/namespace.c
+@@ -53,6 +53,7 @@ typedef enum MountMode {
+         PRIVATE_TMP,
+         PRIVATE_VAR_TMP,
+         PRIVATE_DEV,
++        PRIVATE_BUS_ENDPOINT,
+         READWRITE
+ } MountMode;
+
+@@ -271,6 +272,78 @@ fail:
+         return r;
+ }
+
++static int mount_kdbus(BindMount *m) {
++
++        char temporary_mount[] = "/tmp/kdbus-dev-XXXXXX";
++        _cleanup_free_ char *basepath = NULL;
++        _cleanup_umask_ mode_t u;
++        char *busnode = NULL, *root;
++        struct stat st;
++        int r;
++
++        assert(m);
++
++        u = umask(0000);
++
++        if (!mkdtemp(temporary_mount))
++                return log_error_errno(errno, "Failed create temp dir: %m");
++
++        root = strjoina(temporary_mount, "/kdbus");
++        (void) mkdir(root, 0755);
++        if (mount("tmpfs", root, "tmpfs", MS_NOSUID|MS_STRICTATIME, "mode=777") < 0) {
++                r = -errno;
++                goto fail;
++        }
++
++        /* create a new /dev/null dev node copy so we have some fodder to
++         * bind-mount the custom endpoint over. */
++        if (stat("/dev/null", &st) < 0) {
++                r = log_error_errno(errno, "Failed to stat /dev/null: %m");
++                goto fail;
++        }
++
++        busnode = strjoina(root, "/bus");
++        if (mknod(busnode, (st.st_mode & ~07777) | 0600, st.st_rdev) < 0) {
++                r = log_error_errno(errno, "mknod() for %s failed: %m",
++                                    busnode);
++                goto fail;
++        }
++
++        r = mount(m->path, busnode, NULL, MS_BIND, NULL);
++        if (r < 0) {
++                r = log_error_errno(errno, "bind mount of %s failed: %m",
++                                    m->path);
++                goto fail;
++        }
++
++        basepath = dirname_malloc(m->path);
++        if (!basepath) {
++                r = -ENOMEM;
++                goto fail;
++        }
++
++        if (mount(root, basepath, NULL, MS_MOVE, NULL) < 0) {
++                r = log_error_errno(errno, "bind mount of %s failed: %m",
++                                    basepath);
++                goto fail;
++        }
++
++        rmdir(temporary_mount);
++        return 0;
++
++fail:
++        if (busnode) {
++                umount(busnode);
++                unlink(busnode);
++        }
++
++        umount(root);
++        rmdir(root);
++        rmdir(temporary_mount);
++
++        return r;
++}
++
+ static int apply_mount(
+                 BindMount *m,
+                 const char *tmp_dir,
+@@ -310,6 +383,9 @@ static int apply_mount(
+         case PRIVATE_DEV:
+                 return mount_dev(m);
+
++        case PRIVATE_BUS_ENDPOINT:
++                return mount_kdbus(m);
++
+         default:
+                 assert_not_reached("Unknown mode");
+         }
+@@ -352,6 +428,7 @@ int setup_namespace(
+                 char** inaccessible_dirs,
+                 const char* tmp_dir,
+                 const char* var_tmp_dir,
++                const char* bus_endpoint_path,
+                 bool private_dev,
+                 ProtectHome protect_home,
+                 ProtectSystem protect_system,
+@@ -367,7 +444,7 @@ int setup_namespace(
+         if (unshare(CLONE_NEWNS) < 0)
+                 return -errno;
+
+-        n = !!tmp_dir + !!var_tmp_dir +
++        n = !!tmp_dir + !!var_tmp_dir + !!bus_endpoint_path +
+                 strv_length(read_write_dirs) +
+                 strv_length(read_only_dirs) +
+                 strv_length(inaccessible_dirs) +
+@@ -408,6 +485,12 @@ int setup_namespace(
+                         m++;
+                 }
+
++                if (bus_endpoint_path) {
++                        m->path = prefix_roota(root_directory, bus_endpoint_path);
++                        m->mode = PRIVATE_BUS_ENDPOINT;
++                        m++;
++                }
++
+                 if (protect_home != PROTECT_HOME_NO) {
+                         const char *home_dir, *run_user_dir, *root_dir;
+
+--- a/src/core/namespace.h
++++ b/src/core/namespace.h
+@@ -45,6 +45,7 @@ int setup_namespace(const char *chroot,
+                     char **inaccessible_dirs,
+                     const char *tmp_dir,
+                     const char *var_tmp_dir,
++                    const char *endpoint_path,
+                     bool private_dev,
+                     ProtectHome protect_home,
+                     ProtectSystem protect_system,
+--- a/src/core/service.c
++++ b/src/core/service.c
+@@ -113,6 +113,7 @@ static void service_init(Unit *u) {
+         s->runtime_max_usec = USEC_INFINITY;
+         s->type = _SERVICE_TYPE_INVALID;
+         s->socket_fd = -1;
++        s->bus_endpoint_fd = -1;
+         s->stdin_fd = s->stdout_fd = s->stderr_fd = -1;
+         s->guess_main_pid = true;
+
+@@ -317,6 +318,7 @@ static void service_done(Unit *u) {
+
+         s->bus_name_owner = mfree(s->bus_name_owner);
+
++        s->bus_endpoint_fd = safe_close(s->bus_endpoint_fd);
+         service_close_socket_fd(s);
+
+         unit_ref_unset(&s->accept_socket);
+@@ -1143,6 +1145,7 @@ static int service_spawn(
+                 pid_t *_pid) {
+
+         _cleanup_strv_free_ char **argv = NULL, **final_env = NULL, **our_env = NULL, **fd_names = NULL;
++        _cleanup_free_ char *bus_endpoint_path = NULL;
+         _cleanup_free_ int *fds = NULL;
+         unsigned n_fds = 0, n_env = 0;
+         const char *path;
+@@ -1152,6 +1155,7 @@ static int service_spawn(
+                 .apply_permissions = apply_permissions,
+                 .apply_chroot      = apply_chroot,
+                 .apply_tty_stdin   = apply_tty_stdin,
++                .bus_endpoint_fd   = -1,
+                 .stdin_fd          = -1,
+                 .stdout_fd         = -1,
+                 .stderr_fd         = -1,
+@@ -1251,6 +1255,18 @@ static int service_spawn(
+         } else
+                 path = UNIT(s)->cgroup_path;
+
++        if (s->exec_context.bus_endpoint) {
++                r = bus_kernel_create_endpoint(MANAGER_IS_SYSTEM(UNIT(s)->manager) ? "system" : "user",
++                                               UNIT(s)->id, &bus_endpoint_path);
++                if (r < 0)
++                        return r;
++
++                /* Pass the fd to the exec_params so that the child process can upload the policy.
++                 * Keep a reference to the fd in the service, so the endpoint is kept alive as long
++                 * as the service is running. */
++                exec_params.bus_endpoint_fd = s->bus_endpoint_fd = r;
++        }
++
+         exec_params.argv = argv;
+         exec_params.fds = fds;
+         exec_params.fd_names = fd_names;
+@@ -1262,6 +1278,7 @@ static int service_spawn(
+         exec_params.cgroup_delegate = s->cgroup_context.delegate;
+         exec_params.runtime_prefix = manager_get_runtime_prefix(UNIT(s)->manager);
+         exec_params.watchdog_usec = s->watchdog_usec;
++        exec_params.bus_endpoint_path = bus_endpoint_path;
+         exec_params.selinux_context_net = s->socket_fd_selinux_context_net;
+         if (s->type == SERVICE_IDLE)
+                 exec_params.idle_pipe = UNIT(s)->manager->idle_pipe;
+@@ -2105,6 +2122,9 @@ static int service_serialize(Unit *u, FI
+         r = unit_serialize_item_fd(u, f, fds, "socket-fd", s->socket_fd);
+         if (r < 0)
+                 return r;
++        r = unit_serialize_item_fd(u, f, fds, "endpoint-fd", s->bus_endpoint_fd);
++        if (r < 0)
++                return r;
+
+         LIST_FOREACH(fd_store, fs, s->fd_store) {
+                 _cleanup_free_ char *c = NULL;
+@@ -2238,6 +2258,15 @@ static int service_deserialize_item(Unit
+                         asynchronous_close(s->socket_fd);
+                         s->socket_fd = fdset_remove(fds, fd);
+                 }
++        } else if (streq(key, "endpoint-fd")) {
++                int fd;
++
++                if (safe_atoi(value, &fd) < 0 || fd < 0 || !fdset_contains(fds, fd))
++                        log_unit_debug(u, "Failed to parse endpoint-fd value: %s", value);
++                else {
++                        safe_close(s->bus_endpoint_fd);
++                        s->bus_endpoint_fd = fdset_remove(fds, fd);
++                }
+         } else if (streq(key, "fd-store-fd")) {
+                 const char *fdv;
+                 size_t pf;
+--- a/src/core/service.h
++++ b/src/core/service.h
+@@ -151,6 +151,8 @@ struct Service {
+         int socket_fd;
+         bool socket_fd_selinux_context_net;
+
++        int bus_endpoint_fd;
++
+         bool permissions_start_only;
+         bool root_directory_start_only;
+         bool remain_after_exit;
+--- a/src/core/socket.c
++++ b/src/core/socket.c
+@@ -1614,6 +1614,7 @@ static int socket_spawn(Socket *s, ExecC
+                 .apply_permissions = true,
+                 .apply_chroot      = true,
+                 .apply_tty_stdin   = true,
++                .bus_endpoint_fd   = -1,
+                 .stdin_fd          = -1,
+                 .stdout_fd         = -1,
+                 .stderr_fd         = -1,
+--- a/src/core/swap.c
++++ b/src/core/swap.c
+@@ -609,6 +609,7 @@ static int swap_spawn(Swap *s, ExecComma
+                 .apply_permissions = true,
+                 .apply_chroot      = true,
+                 .apply_tty_stdin   = true,
++                .bus_endpoint_fd   = -1,
+                 .stdin_fd          = -1,
+                 .stdout_fd         = -1,
+                 .stderr_fd         = -1,
+--- a/src/libsystemd/sd-bus/bus-kernel.c
++++ b/src/libsystemd/sd-bus/bus-kernel.c
+@@ -1693,6 +1693,50 @@ int bus_kernel_open_bus_fd(const char *b
+         return fd;
+ }
+
++int bus_kernel_create_endpoint(const char *bus_name, const char *ep_name, char **ep_path) {
++        _cleanup_free_ char *path = NULL;
++        struct kdbus_cmd *make;
++        struct kdbus_item *n;
++        const char *name;
++        int fd;
++
++        fd = bus_kernel_open_bus_fd(bus_name, &path);
++        if (fd < 0)
++                return fd;
++
++        make = alloca0_align(ALIGN8(offsetof(struct kdbus_cmd, items)) +
++                             ALIGN8(offsetof(struct kdbus_item, str) + DECIMAL_STR_MAX(uid_t) + 1 + strlen(ep_name) + 1),
++                             8);
++        make->size = ALIGN8(offsetof(struct kdbus_cmd, items));
++        make->flags = KDBUS_MAKE_ACCESS_WORLD;
++
++        n = make->items;
++        sprintf(n->str, UID_FMT "-%s", getuid(), ep_name);
++        n->size = offsetof(struct kdbus_item, str) + strlen(n->str) + 1;
++        n->type = KDBUS_ITEM_MAKE_NAME;
++        make->size += ALIGN8(n->size);
++        name = n->str;
++
++        if (ioctl(fd, KDBUS_CMD_ENDPOINT_MAKE, make) < 0) {
++                safe_close(fd);
++                return -errno;
++        }
++
++        if (ep_path) {
++                char *p;
++
++                p = strjoin(dirname(path), "/", name, NULL);
++                if (!p) {
++                        safe_close(fd);
++                        return -ENOMEM;
++                }
++
++                *ep_path = p;
++        }
++
++        return fd;
++}
++
+ int bus_kernel_try_close(sd_bus *bus) {
+         struct kdbus_cmd byebye = { .size = sizeof(byebye) };
+
+--- a/src/test/test-ns.c
++++ b/src/test/test-ns.c
+@@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
+                             (char **) inaccessible,
+                             tmp_dir,
+                             var_tmp_dir,
++                            NULL,
+                             true,
+                             PROTECT_HOME_NO,
+                             PROTECT_SYSTEM_NO,
