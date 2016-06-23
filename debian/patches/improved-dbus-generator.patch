@@ -3,7 +3,7 @@
 @@ -259,24 +259,91 @@ static int link_busnames_target(const ch
          return 0;
  }
-
+ 
 -static int link_compatibility(const char *units) {
 -        const char *f, *t;
 +static int link_compatibility(const char *units, bool system) {
@@ -22,7 +22,7 @@
 +                kd_path = "%U-user";
 +                path = "%t/bus";
 +        }
-
+ 
 -        f = strjoina(units, "/systemd-bus-proxyd.socket");
 -        t = strjoina(arg_dest, "/" SPECIAL_DBUS_SOCKET);
 -        mkdir_parents_label(t, 0755);
@@ -106,13 +106,13 @@
 +                return log_error_errno(errno, "Failed to create symlink %s: %m", service);
 +        if (symlink(SPECIAL_DBUS_SOCKET, socket) < 0)
 +                return log_error_errno(errno, "Failed to create symlink %s: %m", socket);
-
+ 
          return 0;
  }
 @@ -304,6 +371,7 @@ int main(int argc, char *argv[]) {
          if (!is_kdbus_available())
                  return 0;
-
+ 
 +
          r = cg_pid_get_owner_uid(0, NULL);
          if (r >= 0) {
@@ -120,8 +120,9 @@
 @@ -323,7 +391,7 @@ int main(int argc, char *argv[]) {
          if (q < 0)
                  r = q;
-
+ 
 -        q = link_compatibility(units);
 +        q = link_compatibility(units, streq(type, "system"));
          if (q < 0)
                  r = q;
+ 
