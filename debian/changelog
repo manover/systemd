@@ -1,3 +1,9 @@
+systemd (230-6.1) unstable; urgency=medium
+
+  * Rebase on 230-6
+
+ -- Denis Bychkov <manover@gmail.com>  Fri, 08 Jul 2016 00:10:21 -0400
+
 systemd (230-6) unstable; urgency=medium
 
   [ Martin Pitt ]
