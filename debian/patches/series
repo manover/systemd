@@ -22,3 +22,11 @@ debian/Revert-core-enable-TasksMax-for-all-services-by-default-a.patch
 debian/Let-graphical-session-pre.target-be-manually-started.patch
 debian/Add-env-variable-for-machine-ID-path.patch
 test-skip-instead-of-fail-if-crypto-kmods-are-not-availab.patch
+# manover/systemd-notify-wait-parameter.patch
+# *** kdbus ***
+# manover/revert-kdbus-removal.patch
+# manover/revert-kdbus-custom-endpoint-removal.patch
+# manover/revert-kdbus-proxy-removal.patch
+# manover/improved-dbus-generator.patch
+# *************
+manover/notify-redirect-stdin-messages.patch
