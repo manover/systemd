@@ -1,0 +1,100 @@
+--- a/src/notify/notify.c
++++ b/src/notify/notify.c
+@@ -34,10 +34,13 @@
+ #include "strv.h"
+ #include "util.h"
+ 
++#define BUF_SIZE 2048
++
+ static bool arg_ready = false;
+ static pid_t arg_pid = 0;
+ static const char *arg_status = NULL;
+ static bool arg_booted = false;
++static bool arg_redirect = false;
+ 
+ static void help(void) {
+         printf("%s [OPTIONS...] [VARIABLE=VALUE...]\n\n"
+@@ -47,7 +50,8 @@ static void help(void) {
+                "     --ready           Inform the init system about service start-up completion\n"
+                "     --pid[=PID]       Set main pid of daemon\n"
+                "     --status=TEXT     Set status text\n"
+-               "     --booted          Check if the system was booted up with systemd\n",
++               "     --booted          Check if the system was booted up with systemd\n"
++               "     --redirect        Do not exit, read from stdin and redirect everything to the notify socket\n",
+                program_invocation_short_name);
+ }
+ 
+@@ -59,6 +63,7 @@ static int parse_argv(int argc, char *ar
+                 ARG_PID,
+                 ARG_STATUS,
+                 ARG_BOOTED,
++                ARG_REDIRECT,
+         };
+ 
+         static const struct option options[] = {
+@@ -68,6 +73,7 @@ static int parse_argv(int argc, char *ar
+                 { "pid",       optional_argument, NULL, ARG_PID       },
+                 { "status",    required_argument, NULL, ARG_STATUS    },
+                 { "booted",    no_argument,       NULL, ARG_BOOTED    },
++                { "redirect",  no_argument,       NULL, ARG_REDIRECT  },
+                 {}
+         };
+ 
+@@ -103,6 +109,10 @@ static int parse_argv(int argc, char *ar
+ 
+                         break;
+ 
++                case ARG_REDIRECT:
++                        arg_redirect = true;
++                        break;
++
+                 case ARG_STATUS:
+                         arg_status = optarg;
+                         break;
+@@ -123,6 +133,7 @@ static int parse_argv(int argc, char *ar
+             !arg_ready &&
+             !arg_status &&
+             !arg_pid &&
++            !arg_redirect &&
+             !arg_booted) {
+                 help();
+                 return -EINVAL;
+@@ -199,5 +210,38 @@ int main(int argc, char* argv[]) {
+         }
+ 
+ finish:
++        if (arg_redirect) {
++            size_t l;
++            char * buf = malloc(BUF_SIZE);
++            if (!buf) {
++                    r = log_oom();
++            } else {
++                    for (;;) {
++                            l = read(STDIN_FILENO, buf, BUF_SIZE-1);
++                            if (l < 0) {
++                                    log_error_errno(l, "Error reading stdin: %m");
++                                    r = errno;
++                                    break;
++                            } else if (l == 0) {
++                                    log_error("No more data to read");
++                                    r = 0;
++                                    break;
++                            }
++                            buf[l] = '\0';
++                            r = sd_notify(false, buf);
++
++                            if (r < 0) {
++                                    log_error_errno(r, "Failed to notify init system: %m");
++                                    break;
++                            } else if (r == 0) {
++                                    log_error("No status data could be sent: $NOTIFY_SOCKET was not set");
++                                    r = -EOPNOTSUPP;
++                                    break;
++                            }
++                    }
++                    free(buf);
++            }
++        }
++
+         return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+ }
