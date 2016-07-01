@@ -22,7 +22,8 @@ debian/Skip-filesystem-check-if-already-done-by-the-initram.patch
 debian/Revert-core-one-step-back-again-for-nspawn-we-actual.patch
 debian/Revert-core-set-RLIMIT_CORE-to-unlimited-by-default.patch
 debian/Revert-core-enable-TasksMax-for-all-services-by-default-a.patch
-improved-dbus-generator.patch
-systemd-notify-wait-parameter.patch
-revert-kdbus-custom-endpoint-removal.patch
-revert-kdbus-proxy-removal.patch
+manover/revert-kdbus-removal.patch
+manover/revert-kdbus-custom-endpoint-removal.patch
+manover/revert-kdbus-proxy-removal.patch
+manover/improved-dbus-generator.patch
+manover/systemd-notify-wait-parameter.patch

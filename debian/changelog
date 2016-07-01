@@ -1,3 +1,10 @@
+systemd (231-1.1) unstable; urgency=medium
+
+  * Rebase on 231-1
+  * Revert kdbus removal commit
+
+ -- Denis Bychkov <manover@gmail.com>  Tue, 26 Jul 2016 15:24:49 -0400
+
 systemd (231-1) unstable; urgency=low
 
   [ Martin Pitt ]

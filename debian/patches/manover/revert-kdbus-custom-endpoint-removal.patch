@@ -1,29 +1,30 @@
-commit 9ca6ff50ab7af9d122521c5bb9cc8201cb38181a
-Author: Daniel Mack <daniel@zonque.org>
-Date:   Thu Feb 11 22:12:04 2016 +0100
-
-    Remove kdbus custom endpoint support
-
-    This feature will not be used anytime soon, so remove a bit of cruft.
-
-    The BusPolicy= config directive will stay around as compat noop.
+Revert this commit:
+    commit 9ca6ff50ab7af9d122521c5bb9cc8201cb38181a
+    Author: Daniel Mack <daniel@zonque.org>
+    Date:   Thu Feb 11 22:12:04 2016 +0100
+    
+        Remove kdbus custom endpoint support
+    
+        This feature will not be used anytime soon, so remove a bit of cruft.
+    
+        The BusPolicy= config directive will stay around as compat noop.
 
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -1129,6 +1129,8 @@ libcore_la_SOURCES = \
-	src/core/socket.h \
-	src/core/busname.c \
-	src/core/busname.h \
+@@ -1179,6 +1179,8 @@ libcore_la_SOURCES = \
+ 	src/core/socket.h \
+ 	src/core/busname.c \
+ 	src/core/busname.h \
 +	src/core/bus-endpoint.c \
 +	src/core/bus-endpoint.h \
-	src/core/bus-policy.c \
-	src/core/bus-policy.h \
-	src/core/target.c \
+ 	src/core/bus-policy.c \
+ 	src/core/bus-policy.h \
+ 	src/core/target.c \
 --- a/man/systemd.service.xml
 +++ b/man/systemd.service.xml
-@@ -268,6 +268,42 @@
+@@ -269,6 +269,42 @@
        </varlistentry>
-
+ 
        <varlistentry>
 +        <term><varname>BusPolicy=</varname></term>
 +
@@ -66,10 +67,10 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
          executed when this service is started. The value is split into
 --- a/src/basic/exit-status.c
 +++ b/src/basic/exit-status.c
-@@ -147,6 +147,9 @@ const char* exit_status_to_string(ExitSt
+@@ -146,6 +146,9 @@ const char* exit_status_to_string(ExitSt
                  case EXIT_MAKE_STARTER:
                          return "MAKE_STARTER";
-
+ 
 +                case EXIT_BUS_ENDPOINT:
 +                        return "BUS_ENDPOINT";
 +
@@ -78,14 +79,14 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
                  }
 --- a/src/basic/exit-status.h
 +++ b/src/basic/exit-status.h
-@@ -77,6 +77,7 @@ typedef enum ExitStatus {
+@@ -81,6 +81,7 @@ typedef enum ExitStatus {
          EXIT_RUNTIME_DIRECTORY,
          EXIT_MAKE_STARTER,
          EXIT_CHOWN,
 +        EXIT_BUS_ENDPOINT,
          EXIT_SMACK_PROCESS_LABEL,
  } ExitStatus;
-
+ 
 --- /dev/null
 +++ b/src/core/bus-endpoint.c
 @@ -0,0 +1,135 @@
@@ -273,15 +274,15 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
 +++ b/src/core/busname.h
 @@ -23,7 +23,6 @@ typedef struct BusName BusName;
  typedef struct BusNamePolicy BusNamePolicy;
-
+ 
  #include "unit.h"
 -#include "bus-policy.h"
-
+ 
  typedef enum BusNameResult {
          BUSNAME_SUCCESS,
 --- a/src/core/execute.c
 +++ b/src/core/execute.c
-@@ -58,6 +58,7 @@
+@@ -59,6 +59,7 @@
  #endif
  #include "async.h"
  #include "barrier.h"
@@ -289,30 +290,30 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
  #include "cap-list.h"
  #include "capability-util.h"
  #include "def.h"
-@@ -1365,6 +1366,9 @@ static bool exec_needs_mount_namespace(
+@@ -1518,6 +1519,9 @@ static bool exec_needs_mount_namespace(
          if (context->private_tmp && runtime && (runtime->tmp_dir || runtime->var_tmp_dir))
                  return true;
-
+ 
 +        if (params->bus_endpoint_path)
 +                return true;
 +
          if (context->private_devices ||
              context->protect_system != PROTECT_SYSTEM_NO ||
              context->protect_home != PROTECT_HOME_NO)
-@@ -1398,6 +1402,9 @@ static int close_remaining_fds(
+@@ -1551,6 +1555,9 @@ static int close_remaining_fds(
                  n_dont_close += n_fds;
          }
-
+ 
 +        if (params->bus_endpoint_fd >= 0)
 +                dont_close[n_dont_close++] = params->bus_endpoint_fd;
 +
          if (runtime) {
                  if (runtime->netns_storage_socket[0] >= 0)
                          dont_close[n_dont_close++] = runtime->netns_storage_socket[0];
-@@ -1627,6 +1634,16 @@ static int exec_child(
+@@ -1782,6 +1789,16 @@ static int exec_child(
                  }
          }
-
+ 
 +        if (params->bus_endpoint_fd >= 0 && context->bus_endpoint) {
 +                uid_t ep_uid = (uid == UID_INVALID) ? 0 : uid;
 +
@@ -326,35 +327,35 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
          /* If delegation is enabled we'll pass ownership of the cgroup
           * (but only in systemd's own controller hierarchy!) to the
           * user of the new process. */
-@@ -1749,6 +1766,7 @@ static int exec_child(
-                                 context->inaccessible_dirs,
+@@ -1938,6 +1955,7 @@ static int exec_child(
+                                 context->inaccessible_paths,
                                  tmp,
                                  var,
 +                                params->bus_endpoint_path,
                                  context->private_devices,
                                  context->protect_home,
                                  context->protect_system,
-@@ -2152,6 +2170,9 @@ void exec_context_done(ExecContext *c) {
+@@ -2340,6 +2358,9 @@ void exec_context_done(ExecContext *c) {
          c->address_families = set_free(c->address_families);
-
+ 
          c->runtime_directory = strv_free(c->runtime_directory);
 +
 +        bus_endpoint_free(c->bus_endpoint);
 +        c->bus_endpoint = NULL;
  }
-
+ 
  int exec_context_destroy_runtime_directory(ExecContext *c, const char *runtime_prefix) {
 --- a/src/core/execute.h
 +++ b/src/core/execute.h
 @@ -30,6 +30,7 @@ typedef struct ExecParameters ExecParame
  #include <stdio.h>
  #include <sys/capability.h>
-
+ 
 +#include "bus-endpoint.h"
+ #include "cgroup-util.h"
  #include "fdset.h"
  #include "list.h"
- #include "missing.h"
-@@ -197,6 +198,9 @@ struct ExecContext {
+@@ -202,6 +203,9 @@ struct ExecContext {
          bool ioprio_set:1;
          bool cpu_sched_set:1;
          bool no_new_privileges_set:1;
@@ -362,12 +363,12 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
 +        /* custom dbus enpoint */
 +        BusEndpoint *bus_endpoint;
  };
-
- #include "cgroup-util.h"
-@@ -227,6 +231,9 @@ struct ExecParameters {
-
+ 
+ struct ExecParameters {
+@@ -229,6 +233,9 @@ struct ExecParameters {
+ 
          int *idle_pipe;
-
+ 
 +        char *bus_endpoint_path;
 +        int bus_endpoint_fd;
 +
@@ -376,7 +377,7 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
          int stderr_fd;
 --- a/src/core/load-fragment-gperf.gperf.m4
 +++ b/src/core/load-fragment-gperf.gperf.m4
-@@ -251,7 +251,7 @@ Service.BusName,                 config_
+@@ -261,7 +261,7 @@ Service.BusName,                 config_
  Service.FileDescriptorStoreMax,  config_parse_unsigned,              0,                             offsetof(Service, n_fd_store_max)
  Service.NotifyAccess,            config_parse_notify_access,         0,                             offsetof(Service, notify_access)
  Service.Sockets,                 config_parse_service_sockets,       0,                             0
@@ -387,10 +388,10 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
  EXEC_CONTEXT_CONFIG_ITEMS(Service)m4_dnl
 --- a/src/core/load-fragment.c
 +++ b/src/core/load-fragment.c
-@@ -1867,6 +1867,59 @@ int config_parse_bus_policy(
+@@ -1872,6 +1872,59 @@ int config_parse_bus_policy(
          return 0;
  }
-
+ 
 +int config_parse_bus_endpoint_policy(
 +                const char *unit,
 +                const char *filename,
@@ -476,11 +477,11 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
 +        PRIVATE_BUS_ENDPOINT,
          READWRITE
  } MountMode;
-
+ 
 @@ -271,6 +272,78 @@ fail:
          return r;
  }
-
+ 
 +static int mount_kdbus(BindMount *m) {
 +
 +        char temporary_mount[] = "/tmp/kdbus-dev-XXXXXX";
@@ -556,37 +557,37 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
  static int apply_mount(
                  BindMount *m,
                  const char *tmp_dir,
-@@ -310,6 +383,9 @@ static int apply_mount(
+@@ -320,6 +393,9 @@ static int apply_mount(
          case PRIVATE_DEV:
                  return mount_dev(m);
-
+ 
 +        case PRIVATE_BUS_ENDPOINT:
 +                return mount_kdbus(m);
 +
          default:
                  assert_not_reached("Unknown mode");
          }
-@@ -352,6 +428,7 @@ int setup_namespace(
-                 char** inaccessible_dirs,
+@@ -365,6 +441,7 @@ int setup_namespace(
+                 char** inaccessible_paths,
                  const char* tmp_dir,
                  const char* var_tmp_dir,
 +                const char* bus_endpoint_path,
                  bool private_dev,
                  ProtectHome protect_home,
                  ProtectSystem protect_system,
-@@ -367,7 +444,7 @@ int setup_namespace(
+@@ -380,7 +457,7 @@ int setup_namespace(
          if (unshare(CLONE_NEWNS) < 0)
                  return -errno;
-
+ 
 -        n = !!tmp_dir + !!var_tmp_dir +
 +        n = !!tmp_dir + !!var_tmp_dir + !!bus_endpoint_path +
-                 strv_length(read_write_dirs) +
-                 strv_length(read_only_dirs) +
-                 strv_length(inaccessible_dirs) +
-@@ -408,6 +485,12 @@ int setup_namespace(
+                 strv_length(read_write_paths) +
+                 strv_length(read_only_paths) +
+                 strv_length(inaccessible_paths) +
+@@ -421,6 +498,12 @@ int setup_namespace(
                          m++;
                  }
-
+ 
 +                if (bus_endpoint_path) {
 +                        m->path = prefix_roota(root_directory, bus_endpoint_path);
 +                        m->mode = PRIVATE_BUS_ENDPOINT;
@@ -595,11 +596,11 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
 +
                  if (protect_home != PROTECT_HOME_NO) {
                          const char *home_dir, *run_user_dir, *root_dir;
-
+ 
 --- a/src/core/namespace.h
 +++ b/src/core/namespace.h
 @@ -45,6 +45,7 @@ int setup_namespace(const char *chroot,
-                     char **inaccessible_dirs,
+                     char **inaccessible_paths,
                      const char *tmp_dir,
                      const char *var_tmp_dir,
 +                    const char *endpoint_path,
@@ -615,24 +616,24 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
 +        s->bus_endpoint_fd = -1;
          s->stdin_fd = s->stdout_fd = s->stderr_fd = -1;
          s->guess_main_pid = true;
-
-@@ -317,6 +318,7 @@ static void service_done(Unit *u) {
-
+ 
+@@ -339,6 +340,7 @@ static void service_done(Unit *u) {
+ 
          s->bus_name_owner = mfree(s->bus_name_owner);
-
+ 
 +        s->bus_endpoint_fd = safe_close(s->bus_endpoint_fd);
          service_close_socket_fd(s);
-
+ 
          unit_ref_unset(&s->accept_socket);
-@@ -1143,6 +1145,7 @@ static int service_spawn(
+@@ -1165,6 +1167,7 @@ static int service_spawn(
                  pid_t *_pid) {
-
+ 
          _cleanup_strv_free_ char **argv = NULL, **final_env = NULL, **our_env = NULL, **fd_names = NULL;
 +        _cleanup_free_ char *bus_endpoint_path = NULL;
          _cleanup_free_ int *fds = NULL;
          unsigned n_fds = 0, n_env = 0;
          const char *path;
-@@ -1152,6 +1155,7 @@ static int service_spawn(
+@@ -1174,6 +1177,7 @@ static int service_spawn(
                  .apply_permissions = apply_permissions,
                  .apply_chroot      = apply_chroot,
                  .apply_tty_stdin   = apply_tty_stdin,
@@ -640,10 +641,10 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
                  .stdin_fd          = -1,
                  .stdout_fd         = -1,
                  .stderr_fd         = -1,
-@@ -1251,6 +1255,18 @@ static int service_spawn(
+@@ -1273,6 +1277,18 @@ static int service_spawn(
          } else
                  path = UNIT(s)->cgroup_path;
-
+ 
 +        if (s->exec_context.bus_endpoint) {
 +                r = bus_kernel_create_endpoint(MANAGER_IS_SYSTEM(UNIT(s)->manager) ? "system" : "user",
 +                                               UNIT(s)->id, &bus_endpoint_path);
@@ -659,7 +660,7 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
          exec_params.argv = argv;
          exec_params.fds = fds;
          exec_params.fd_names = fd_names;
-@@ -1262,6 +1278,7 @@ static int service_spawn(
+@@ -1284,6 +1300,7 @@ static int service_spawn(
          exec_params.cgroup_delegate = s->cgroup_context.delegate;
          exec_params.runtime_prefix = manager_get_runtime_prefix(UNIT(s)->manager);
          exec_params.watchdog_usec = s->watchdog_usec;
@@ -667,17 +668,17 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
          exec_params.selinux_context_net = s->socket_fd_selinux_context_net;
          if (s->type == SERVICE_IDLE)
                  exec_params.idle_pipe = UNIT(s)->manager->idle_pipe;
-@@ -2105,6 +2122,9 @@ static int service_serialize(Unit *u, FI
+@@ -2130,6 +2147,9 @@ static int service_serialize(Unit *u, FI
          r = unit_serialize_item_fd(u, f, fds, "socket-fd", s->socket_fd);
          if (r < 0)
                  return r;
 +        r = unit_serialize_item_fd(u, f, fds, "endpoint-fd", s->bus_endpoint_fd);
 +        if (r < 0)
 +                return r;
-
+ 
          LIST_FOREACH(fd_store, fs, s->fd_store) {
                  _cleanup_free_ char *c = NULL;
-@@ -2238,6 +2258,15 @@ static int service_deserialize_item(Unit
+@@ -2266,6 +2286,15 @@ static int service_deserialize_item(Unit
                          asynchronous_close(s->socket_fd);
                          s->socket_fd = fdset_remove(fds, fd);
                  }
@@ -695,10 +696,10 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
                  size_t pf;
 --- a/src/core/service.h
 +++ b/src/core/service.h
-@@ -151,6 +151,8 @@ struct Service {
+@@ -153,6 +153,8 @@ struct Service {
          int socket_fd;
          bool socket_fd_selinux_context_net;
-
+ 
 +        int bus_endpoint_fd;
 +
          bool permissions_start_only;
@@ -729,7 +730,7 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
 @@ -1693,6 +1693,50 @@ int bus_kernel_open_bus_fd(const char *b
          return fd;
  }
-
+ 
 +int bus_kernel_create_endpoint(const char *bus_name, const char *ep_name, char **ep_path) {
 +        _cleanup_free_ char *path = NULL;
 +        struct kdbus_cmd *make;
@@ -776,7 +777,7 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
 +
  int bus_kernel_try_close(sd_bus *bus) {
          struct kdbus_cmd byebye = { .size = sizeof(byebye) };
-
+ 
 --- a/src/test/test-ns.c
 +++ b/src/test/test-ns.c
 @@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
