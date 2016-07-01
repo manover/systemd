@@ -1,3 +1,9 @@
+systemd (232-14.1) unstable; urgency=medium
+
+  * Rebase on debian/232-14
+
+ -- Denis Bychkov <manover@gmail.com>  Mon, 23 Jan 2017 20:06:05 -0500
+
 systemd (232-14) unstable; urgency=medium
 
   * Deal with NULL pointers more gracefully in unit_free() (Closes: #852202)
@@ -15,6 +21,13 @@ systemd (232-13) unstable; urgency=medium
   * Update Homepage and the URLs in debian/copyright to use https
 
  -- Michael Biebl <biebl@debian.org>  Sun, 22 Jan 2017 08:19:28 +0100
+
+systemd (232-12.1) unstable; urgency=medium
+
+  * Rebase on debian/232-12
+  * Introduce --redirect mode to systemd-notify
+
+ -- Denis Bychkov <manover@gmail.com>  Sat, 21 Jan 2017 21:57:36 -0500
 
 systemd (232-12) unstable; urgency=medium
 
@@ -461,6 +474,12 @@ systemd (231-5) unstable; urgency=medium
 
  -- Martin Pitt <mpitt@debian.org>  Fri, 26 Aug 2016 10:58:07 +0200
 
+systemd (231-4.1) unstable; urgency=medium
+
+  * Rebase on debian/231-4
+
+ -- Denis Bychkov <manover@gmail.com>  Thu, 18 Aug 2016 04:08:50 -0400
+
 systemd (231-4) unstable; urgency=medium
 
   * Revert "pid1: reconnect to the console before being re-executed"
@@ -502,6 +521,13 @@ systemd (231-2) unstable; urgency=medium
     systems without keyboards). (Closes: #833849)
 
  -- Martin Pitt <mpitt@debian.org>  Sun, 14 Aug 2016 10:54:57 +0200
+
+systemd (231-1.1) unstable; urgency=medium
+
+  * Rebase on 231-1
+  * Revert kdbus removal commit
+
+ -- Denis Bychkov <manover@gmail.com>  Tue, 26 Jul 2016 15:24:49 -0400
 
 systemd (231-1) unstable; urgency=low
 
