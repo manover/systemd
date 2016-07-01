@@ -1,3 +1,9 @@
+systemd (231-4.1) unstable; urgency=medium
+
+  * Rebase on debian/231-4
+
+ -- Denis Bychkov <manover@gmail.com>  Thu, 18 Aug 2016 04:08:50 -0400
+
 systemd (231-4) unstable; urgency=medium
 
   * Revert "pid1: reconnect to the console before being re-executed"
@@ -37,6 +43,13 @@ systemd (231-2) unstable; urgency=medium
     systems without keyboards). (Closes: #833849)
 
  -- Martin Pitt <mpitt@debian.org>  Sun, 14 Aug 2016 10:54:57 +0200
+
+systemd (231-1.1) unstable; urgency=medium
+
+  * Rebase on 231-1
+  * Revert kdbus removal commit
+
+ -- Denis Bychkov <manover@gmail.com>  Tue, 26 Jul 2016 15:24:49 -0400
 
 systemd (231-1) unstable; urgency=low
 

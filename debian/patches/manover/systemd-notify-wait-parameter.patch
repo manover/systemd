@@ -5,7 +5,7 @@
  static const char *arg_status = NULL;
  static bool arg_booted = false;
 +static unsigned arg_wait = 0;
-
+ 
  static void help(void) {
          printf("%s [OPTIONS...] [VARIABLE=VALUE...]\n\n"
 @@ -47,7 +48,8 @@ static void help(void) {
@@ -17,14 +17,14 @@
 +               "     --wait[=SEC]      Sleep after sending the message to avoid the race condition (1 second default)\n",
                 program_invocation_short_name);
  }
-
+ 
 @@ -59,6 +61,7 @@ static int parse_argv(int argc, char *ar
                  ARG_PID,
                  ARG_STATUS,
                  ARG_BOOTED,
 +                ARG_WAIT,
          };
-
+ 
          static const struct option options[] = {
 @@ -68,6 +71,7 @@ static int parse_argv(int argc, char *ar
                  { "pid",       optional_argument, NULL, ARG_PID       },
@@ -33,11 +33,11 @@
 +                { "wait",      optional_argument, NULL, ARG_WAIT      },
                  {}
          };
-
+ 
 @@ -111,6 +115,19 @@ static int parse_argv(int argc, char *ar
                          arg_booted = true;
                          break;
-
+ 
 +                case ARG_WAIT:
 +                        if (optarg) {
 +                            if (safe_atou(optarg, &arg_wait) < 0) {
@@ -53,14 +53,14 @@
 +
                  case '?':
                          return -EINVAL;
-
+ 
 @@ -196,8 +213,12 @@ int main(int argc, char* argv[]) {
          } else if (r == 0) {
                  log_error("No status data could be sent: $NOTIFY_SOCKET was not set");
                  r = -EOPNOTSUPP;
 +                goto finish;
          }
-
+ 
 +		if (arg_wait > 0)
 +                sleep(arg_wait);
 +
