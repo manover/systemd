@@ -49,24 +49,24 @@ Date:	Tue May 24 14:07:11 +0400
  /test-bus-zero-copy
 --- a/Makefile-man.am
 +++ b/Makefile-man.am
-@@ -97,6 +97,8 @@ MANPAGES += \
-	man/systemd-analyze.1 \
-	man/systemd-ask-password-console.service.8 \
-	man/systemd-ask-password.1 \
+@@ -101,6 +101,8 @@ MANPAGES += \
+ 	man/systemd-analyze.1 \
+ 	man/systemd-ask-password-console.service.8 \
+ 	man/systemd-ask-password.1 \
 +	man/systemd-bus-proxyd.8 \
 +	man/systemd-bus-proxyd.service.8 \
-	man/systemd-cat.1 \
-	man/systemd-cgls.1 \
-	man/systemd-cgtop.1 \
-@@ -423,6 +425,7 @@ MANPAGES_ALIAS += \
-	man/systemd-ask-password-console.path.8 \
-	man/systemd-ask-password-wall.path.8 \
-	man/systemd-ask-password-wall.service.8 \
+ 	man/systemd-cat.1 \
+ 	man/systemd-cgls.1 \
+ 	man/systemd-cgtop.1 \
+@@ -428,6 +430,7 @@ MANPAGES_ALIAS += \
+ 	man/systemd-ask-password-console.path.8 \
+ 	man/systemd-ask-password-wall.path.8 \
+ 	man/systemd-ask-password-wall.service.8 \
 +	man/systemd-bus-proxyd.socket.8 \
-	man/systemd-fsck-root.service.8 \
-	man/systemd-fsck.8 \
-	man/systemd-fsckd.8 \
-@@ -756,6 +759,7 @@ man/system.conf.d.5: man/systemd-system.
+ 	man/systemd-fsck-root.service.8 \
+ 	man/systemd-fsck.8 \
+ 	man/systemd-fsckd.8 \
+@@ -762,6 +765,7 @@ man/system.conf.d.5: man/systemd-system.
  man/systemd-ask-password-console.path.8: man/systemd-ask-password-console.service.8
  man/systemd-ask-password-wall.path.8: man/systemd-ask-password-console.service.8
  man/systemd-ask-password-wall.service.8: man/systemd-ask-password-console.service.8
@@ -74,67 +74,67 @@ Date:	Tue May 24 14:07:11 +0400
  man/systemd-fsck-root.service.8: man/systemd-fsck@.service.8
  man/systemd-fsck.8: man/systemd-fsck@.service.8
  man/systemd-fsckd.8: man/systemd-fsckd.service.8
-@@ -1583,6 +1587,9 @@ man/systemd-ask-password-wall.path.html:
+@@ -1592,6 +1596,9 @@ man/systemd-ask-password-wall.path.html:
  man/systemd-ask-password-wall.service.html: man/systemd-ask-password-console.service.html
-	$(html-alias)
-
+ 	$(html-alias)
+ 
 +man/systemd-bus-proxyd.socket.html: man/systemd-bus-proxyd.service.html
 +	$(html-alias)
 +
  man/systemd-fsck-root.service.html: man/systemd-fsck@.service.html
-	$(html-alias)
-
+ 	$(html-alias)
+ 
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -398,6 +398,7 @@ rootlibexec_PROGRAMS = \
-	systemd-ac-power \
-	systemd-sysctl \
-	systemd-sleep \
+@@ -406,6 +406,7 @@ rootlibexec_PROGRAMS = \
+ 	systemd-ac-power \
+ 	systemd-sysctl \
+ 	systemd-sleep \
 +	systemd-bus-proxyd \
-	systemd-socket-proxyd \
-	systemd-update-done
-
-@@ -1500,6 +1501,7 @@ tests += \
-	test-ratelimit \
-	test-condition \
-	test-uid-range \
+ 	systemd-socket-proxyd \
+ 	systemd-update-done
+ 
+@@ -1551,6 +1552,7 @@ tests += \
+ 	test-ratelimit \
+ 	test-condition \
+ 	test-uid-range \
 +	test-bus-policy \
-	test-locale-util \
-	test-execute \
-	test-copy \
-@@ -2047,11 +2049,14 @@ test_unaligned_SOURCES = \
+ 	test-locale-util \
+ 	test-execute \
+ 	test-copy \
+@@ -2109,11 +2111,14 @@ test_unaligned_SOURCES = \
  test_tables_SOURCES = \
-	src/test/test-tables.c \
-	src/shared/test-tables.h \
+ 	src/test/test-tables.c \
+ 	src/shared/test-tables.h \
 +	src/bus-proxyd/bus-xml-policy.c \
 +	src/bus-proxyd/bus-xml-policy.h \
-	src/journal/journald-server.c \
-	src/journal/journald-server.h
-
+ 	src/journal/journald-server.c \
+ 	src/journal/journald-server.h
+ 
  test_tables_CPPFLAGS = \
 -	$(AM_CPPFLAGS)
 +	$(AM_CPPFLAGS) \
 +	-I$(top_srcdir)/src/bus-proxyd
-
+ 
  test_tables_CFLAGS = \
-	$(AM_CFLAGS) \
-@@ -2298,6 +2303,13 @@ test_conf_parser_SOURCES = \
+ 	$(AM_CFLAGS) \
+@@ -2360,6 +2365,13 @@ test_conf_parser_SOURCES = \
  test_conf_parser_LDADD = \
-	libshared.la
-
+ 	libsystemd-shared.la
+ 
 +test_bus_policy_SOURCES = \
 +	src/bus-proxyd/test-bus-xml-policy.c
 +
 +test_bus_policy_LDADD = \
 +	libbus-proxy-core.la \
-+	libshared.la
++	libsystemd-shared.la
 +
  test_af_list_SOURCES = \
-	src/test/test-af-list.c
-
-@@ -3094,12 +3106,59 @@ systemd_run_LDADD = \
-	libshared.la
-
+ 	src/test/test-af-list.c
+ 
+@@ -3162,12 +3174,59 @@ systemd_run_LDADD = \
+ 	libsystemd-shared.la
+ 
  # ------------------------------------------------------------------------------
 +noinst_LTLIBRARIES += \
 +	libbus-proxy-core.la
@@ -157,16 +157,16 @@ Date:	Tue May 24 14:07:11 +0400
 +
 +systemd_bus_proxyd_LDADD = \
 +	libbus-proxy-core.la \
-+	libshared.la
++	libsystemd-shared.la
 +
  systemd_stdio_bridge_SOURCES = \
 -	src/stdio-bridge/stdio-bridge.c
 +	src/bus-proxyd/stdio-bridge.c
-
+ 
  systemd_stdio_bridge_LDADD = \
 +	libbus-proxy-core.la \
-	libshared.la
-
+ 	libsystemd-shared.la
+ 
 +nodist_systemunit_DATA += \
 +	units/systemd-bus-proxyd.service
 +
@@ -192,43 +192,43 @@ Date:	Tue May 24 14:07:11 +0400
 +
  # ------------------------------------------------------------------------------
  systemd_tty_ask_password_agent_SOURCES = \
-	src/tty-ask-password-agent/tty-ask-password-agent.c
-@@ -3262,6 +3321,7 @@ tests += \
-	test-bus-cleanup \
-	test-bus-server \
-	test-bus-match \
+ 	src/tty-ask-password-agent/tty-ask-password-agent.c
+@@ -3323,6 +3382,7 @@ tests += \
+ 	test-bus-cleanup \
+ 	test-bus-server \
+ 	test-bus-match \
 +	test-bus-proxy \
-	test-bus-kernel \
-	test-bus-kernel-bloom \
-	test-bus-zero-copy \
-@@ -3354,6 +3414,12 @@ test_bus_match_SOURCES = \
+ 	test-bus-kernel \
+ 	test-bus-kernel-bloom \
+ 	test-bus-zero-copy \
+@@ -3416,6 +3476,12 @@ test_bus_match_SOURCES = \
  test_bus_match_LDADD = \
-	libshared.la
-
+ 	libsystemd-shared.la
+ 
 +test_bus_proxy_SOURCES = \
 +	src/libsystemd/sd-bus/test-bus-proxy.c
 +
 +test_bus_proxy_LDADD = \
-+	libshared.la
++	libsystemd-shared.la
 +
  test_bus_kernel_SOURCES = \
-	src/libsystemd/sd-bus/test-bus-kernel.c
-
+ 	src/libsystemd/sd-bus/test-bus-kernel.c
+ 
 --- a/README
 +++ b/README
 @@ -197,6 +197,9 @@ USERS AND GROUPS:
          Similarly, the name resolution daemon requires the
          "systemd-resolve" system user and group to exist.
-
+ 
 +        Similarly, the kdbus dbus1 proxy daemon requires the
 +        "systemd-bus-proxy" system user and group to exist.
 +
          Similarly, the coredump support requires the
          "systemd-coredump" system user and group to exist.
-
+ 
 --- a/TODO
 +++ b/TODO
-@@ -345,6 +345,10 @@ Features:
+@@ -354,6 +354,10 @@ Features:
         - path escaping
    - update systemd.special(7) to mention that dbus.socket is only about the compatibility socket now
    - test bloom filter generation indexes
@@ -238,10 +238,10 @@ Date:	Tue May 24 14:07:11 +0400
 +    253 messages)
    - kdbus: introduce a concept of "send-only" connections
    - kdbus: add counter for refused unicast messages that is passed out via the RECV ioctl. SImilar to the counter for dropped multicast messages we already have.
-
+ 
 --- a/man/busctl.xml
 +++ b/man/busctl.xml
-@@ -473,6 +473,7 @@ o "/org/freedesktop/systemd1/job/42684"<
+@@ -475,6 +475,7 @@ o "/org/freedesktop/systemd1/job/42684"<
        <ulink url="http://freedesktop.org/wiki/Software/dbus">D-Bus</ulink>,
        <citerefentry><refentrytitle>sd-bus</refentrytitle><manvolnum>3</manvolnum></citerefentry>,
        <citerefentry><refentrytitle>systemd</refentrytitle><manvolnum>1</manvolnum></citerefentry>,
@@ -5203,7 +5203,7 @@ Date:	Tue May 24 14:07:11 +0400
 --- a/src/test/test-tables.c
 +++ b/src/test/test-tables.c
 @@ -19,6 +19,7 @@
-
+ 
  #include "architecture.h"
  #include "automount.h"
 +#include "bus-xml-policy.h"
@@ -5223,7 +5223,7 @@ Date:	Tue May 24 14:07:11 +0400
 +++ b/sysusers.d/systemd.conf.m4
 @@ -6,6 +6,7 @@
  #  (at your option) any later version.
-
+ 
  g systemd-journal   - -
 +u systemd-bus-proxy - "systemd Bus Proxy"
  m4_ifdef(`ENABLE_NETWORKD',
