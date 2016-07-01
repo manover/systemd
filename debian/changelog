@@ -1,3 +1,9 @@
+systemd (230-7.1) unstable; urgency=medium
+
+  * Rebase on 230-7
+
+ -- Denis Bychkov <manover@gmail.com>  Fri, 08 Jul 2016 18:35:15 -0400
+
 systemd (230-7) unstable; urgency=medium
 
   * Tell dh_shlibdeps to look in the systemd package for libraries. Otherwise
