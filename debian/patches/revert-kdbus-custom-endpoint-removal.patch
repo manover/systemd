@@ -10,7 +10,7 @@ Date:   Thu Feb 11 22:12:04 2016 +0100
 
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -1129,6 +1129,8 @@ libcore_la_SOURCES = \
+@@ -1170,6 +1170,8 @@ libcore_la_SOURCES = \
  	src/core/socket.h \
  	src/core/busname.c \
  	src/core/busname.h \

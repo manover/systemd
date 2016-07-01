@@ -86,7 +86,7 @@ Date:	Tue May 24 14:07:11 +0400
  
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -398,6 +398,7 @@ rootlibexec_PROGRAMS = \
+@@ -400,6 +400,7 @@ rootlibexec_PROGRAMS = \
  	systemd-ac-power \
  	systemd-sysctl \
  	systemd-sleep \
@@ -94,7 +94,7 @@ Date:	Tue May 24 14:07:11 +0400
  	systemd-socket-proxyd \
  	systemd-update-done
  
-@@ -1500,6 +1501,7 @@ tests += \
+@@ -1541,6 +1542,7 @@ tests += \
  	test-ratelimit \
  	test-condition \
  	test-uid-range \
@@ -102,7 +102,7 @@ Date:	Tue May 24 14:07:11 +0400
  	test-locale-util \
  	test-execute \
  	test-copy \
-@@ -2047,11 +2049,14 @@ test_unaligned_SOURCES = \
+@@ -2099,11 +2101,14 @@ test_unaligned_SOURCES = \
  test_tables_SOURCES = \
  	src/test/test-tables.c \
  	src/shared/test-tables.h \
@@ -118,22 +118,22 @@ Date:	Tue May 24 14:07:11 +0400
  
  test_tables_CFLAGS = \
  	$(AM_CFLAGS) \
-@@ -2298,6 +2303,13 @@ test_conf_parser_SOURCES = \
+@@ -2350,6 +2355,13 @@ test_conf_parser_SOURCES = \
  test_conf_parser_LDADD = \
- 	libshared.la
+ 	libsystemd-shared.la
  
 +test_bus_policy_SOURCES = \
 +	src/bus-proxyd/test-bus-xml-policy.c
 +
 +test_bus_policy_LDADD = \
 +	libbus-proxy-core.la \
-+	libshared.la
++	libsystemd-shared.la
 +
  test_af_list_SOURCES = \
  	src/test/test-af-list.c
  
-@@ -3094,12 +3106,59 @@ systemd_run_LDADD = \
- 	libshared.la
+@@ -3159,12 +3171,59 @@ systemd_run_LDADD = \
+ 	libsystemd-shared.la
  
  # ------------------------------------------------------------------------------
 +noinst_LTLIBRARIES += \
@@ -157,7 +157,7 @@ Date:	Tue May 24 14:07:11 +0400
 +
 +systemd_bus_proxyd_LDADD = \
 +	libbus-proxy-core.la \
-+	libshared.la
++	libsystemd-shared.la
 +
  systemd_stdio_bridge_SOURCES = \
 -	src/stdio-bridge/stdio-bridge.c
@@ -165,7 +165,7 @@ Date:	Tue May 24 14:07:11 +0400
  
  systemd_stdio_bridge_LDADD = \
 +	libbus-proxy-core.la \
- 	libshared.la
+ 	libsystemd-shared.la
  
 +nodist_systemunit_DATA += \
 +	units/systemd-bus-proxyd.service
@@ -193,7 +193,7 @@ Date:	Tue May 24 14:07:11 +0400
  # ------------------------------------------------------------------------------
  systemd_tty_ask_password_agent_SOURCES = \
  	src/tty-ask-password-agent/tty-ask-password-agent.c
-@@ -3262,6 +3321,7 @@ tests += \
+@@ -3318,6 +3377,7 @@ tests += \
  	test-bus-cleanup \
  	test-bus-server \
  	test-bus-match \
@@ -201,15 +201,15 @@ Date:	Tue May 24 14:07:11 +0400
  	test-bus-kernel \
  	test-bus-kernel-bloom \
  	test-bus-zero-copy \
-@@ -3354,6 +3414,12 @@ test_bus_match_SOURCES = \
+@@ -3411,6 +3471,12 @@ test_bus_match_SOURCES = \
  test_bus_match_LDADD = \
- 	libshared.la
+ 	libsystemd-shared.la
  
 +test_bus_proxy_SOURCES = \
 +	src/libsystemd/sd-bus/test-bus-proxy.c
 +
 +test_bus_proxy_LDADD = \
-+	libshared.la
++	libsystemd-shared.la
 +
  test_bus_kernel_SOURCES = \
  	src/libsystemd/sd-bus/test-bus-kernel.c
