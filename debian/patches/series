@@ -34,3 +34,4 @@ debian/Add-env-variable-for-machine-ID-path.patch
 # manover/improved-dbus-generator.patch
 # *************
 manover/notify-redirect-stdin-messages.patch
+manover/x32-fix.patch
