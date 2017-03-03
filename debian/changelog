@@ -1,6 +1,7 @@
 systemd (233-1.1) unstable; urgency=medium
 
   * Rebase on debian/233-1
+  * Fix FTBFS on x32 related to print format strings
 
  -- Denis Bychkov <manover@gmail.com>  Thu, 02 Mar 2017 19:09:30 -0500
 
