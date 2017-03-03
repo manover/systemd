@@ -31,3 +31,4 @@ debian/Mark-test-timesync-as-manual.patch
 debian/Avoid-requiring-a-kvm-system-group.patch
 debian/Revert-units-Tell-login-to-preserve-environment.patch
 manover/notify-redirect-stdin-messages.patch
+manover/x32-fix.patch
