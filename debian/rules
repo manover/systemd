@@ -99,6 +99,7 @@ SPLIT_USR_PATHS = \
 CONFFLAGS = \
 	$(SPLIT_USR_PATHS) \
 	--with-rootprefix= \
+	--with-default-hierarchy=unified \
 	--with-rootlibdir=/lib/$(DEB_HOST_MULTIARCH) \
 	--with-zshcompletiondir=/usr/share/zsh/vendor-completions \
 	--with-sysvinit-path=/etc/init.d \
