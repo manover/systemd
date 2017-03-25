@@ -61,7 +61,7 @@ Architecture: linux-any
 Multi-Arch: foreign
 Section: admin
 Priority: important
-Recommends: libpam-systemd
+Recommends: libpam-systemd,
             dbus
 Suggests: systemd-container,
           policykit-1
