@@ -6,26 +6,28 @@ Subject: Include additional directories in ProtectSystem
  src/core/namespace.c | 8 ++++++++
  1 file changed, 8 insertions(+)
 
-diff --git a/src/core/namespace.c b/src/core/namespace.c
-index 05175e9..f682de1 100644
 --- a/src/core/namespace.c
 +++ b/src/core/namespace.c
-@@ -130,6 +130,10 @@ static const MountEntry protect_home_yes_table[] = {
+@@ -129,6 +129,12 @@ static const MountEntry protect_home_yes
  /* ProtectSystem=yes table */
  static const MountEntry protect_system_yes_table[] = {
          { "/usr",                READONLY,     false },
 +        { "/lib",                READONLY,     true  },
++        { "/lib32",              READONLY,     true  },
++        { "/libx32",             READONLY,     true  },
 +        { "/lib64",              READONLY,     true  },
 +        { "/bin",                READONLY,     true  },
 +        { "/sbin",               READONLY,     true  },
          { "/boot",               READONLY,     true  },
          { "/efi",                READONLY,     true  },
  };
-@@ -137,6 +141,10 @@ static const MountEntry protect_system_yes_table[] = {
+@@ -136,6 +142,12 @@ static const MountEntry protect_system_y
  /* ProtectSystem=full includes ProtectSystem=yes */
  static const MountEntry protect_system_full_table[] = {
          { "/usr",                READONLY,     false },
 +        { "/lib",                READONLY,     true  },
++        { "/lib32",              READONLY,     true  },
++        { "/libx32",             READONLY,     true  },
 +        { "/lib64",              READONLY,     true  },
 +        { "/bin",                READONLY,     true  },
 +        { "/sbin",               READONLY,     true  },
