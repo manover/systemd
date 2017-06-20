@@ -1,3 +1,9 @@
+systemd (234-1.1) unstable; urgency=medium
+
+  * Rebase on debian/234-1
+
+ -- Denis Bychkov <manover@gmail.com>  Thu, 13 Jul 2017 12:36:02 -0400
+
 systemd (234-1) unstable; urgency=medium
 
   [ Michael Biebl ]
@@ -43,6 +49,12 @@ systemd (234-1) unstable; urgency=medium
 
  -- Michael Biebl <biebl@debian.org>  Thu, 13 Jul 2017 17:38:28 +0200
 
+systemd (233-10.1) unstable; urgency=medium
+
+  * Rebase on debian/233-10
+
+ -- Denis Bychkov <manover@gmail.com>  Mon, 03 Jul 2017 20:15:01 -0400
+
 systemd (233-10) unstable; urgency=medium
 
   [ Martin Pitt ]
@@ -66,6 +78,12 @@ systemd (233-10) unstable; urgency=medium
     This ruleset comes from Yubico's libu2f-host. (Closes: #824532)
 
  -- Michael Biebl <biebl@debian.org>  Mon, 03 Jul 2017 18:51:58 +0200
+
+systemd (233-9.1) unstable; urgency=medium
+
+  * Rebase on 233-9
+
+ -- Denis Bychkov <manover@gmail.com>  Tue, 20 Jun 2017 02:06:29 -0400
 
 systemd (233-9) unstable; urgency=medium
 
