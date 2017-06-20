@@ -63,7 +63,7 @@ CONFFLAGS = \
 	-Dsystem-gid-max=999 \
 	-Dnobody-user=nobody \
 	-Dnobody-group=nogroup \
-	-Ddefault-hierarchy=unified 
+	-Ddefault-hierarchy=unified
 
 # resolved's DNSSEC support is still not mature enough, don't enable it by
 # default on stable Debian or any Ubuntu releases
@@ -84,8 +84,11 @@ CONFFLAGS_deb = \
 	-Dresolve=true
 =======
 	-Defi=true
+<<<<<<< HEAD
 	PYTHON=python3
 >>>>>>> * Adapt to the new gnu-efi layout.
+=======
+>>>>>>> Rebase on debian/234-2
 
 ifeq (, $(filter stage1, $(DEB_BUILD_PROFILES)))
 CONFFLAGS_deb += \
