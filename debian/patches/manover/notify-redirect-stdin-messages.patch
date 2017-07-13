@@ -20,7 +20,7 @@
                 "     --status=TEXT     Set status text\n"
 -               "     --booted          Check if the system was booted up with systemd\n",
 +               "     --booted          Check if the system was booted up with systemd\n"
-+               "     --redirect        Do not exit, read from stdin and redirect everything to the notify socket\n",
++               "     --redirect        Do not exit, redirect from stdin to notify socket\n",
                 program_invocation_short_name);
  }
  

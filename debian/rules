@@ -69,16 +69,18 @@ CONFFLAGS = \
 # default on stable Debian or any Ubuntu releases
 CONFFLAGS += $(shell grep -qE 'stretch|ubuntu' /etc/os-release && echo -Ddefault-dnssec=no)
 
-ifeq (x32,$(DEB_HOST_ARCH))
-export EFI_CC = $(CC) -m64
-endif
-
 CONFFLAGS_deb = \
 	-Dselinux=true \
 	-Dhwdb=true \
 	-Dsysusers=true \
 	-Dinstall-tests=true \
-	-Defi=true
+	-Defi=true \
+	-Defi-libdir=/usr/lib/$(DEB_HOST_MULTIARCH)
+
+ifeq (x32,$(DEB_HOST_ARCH))
+CONFFLAGS_deb += \
+	-Defi-cc=x86_64-linux-gnu-gcc
+endif
 
 ifeq (, $(filter stage1, $(DEB_BUILD_PROFILES)))
 CONFFLAGS_deb += \

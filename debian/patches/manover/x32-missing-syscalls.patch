@@ -1,0 +1,80 @@
+--- a/src/basic/missing_syscall.h
++++ b/src/basic/missing_syscall.h
+@@ -33,7 +33,11 @@ static inline int pivot_root(const char
+ #if !HAVE_DECL_MEMFD_CREATE
+ #  ifndef __NR_memfd_create
+ #    if defined __x86_64__
+-#      define __NR_memfd_create 319
++#      if defined __ILP32__
++#        define __NR_memfd_create 1073742143
++#      else
++#        define __NR_memfd_create 319
++#      endif
+ #    elif defined __arm__
+ #      define __NR_memfd_create 385
+ #    elif defined __aarch64__
+@@ -74,7 +78,11 @@ static inline int memfd_create(const cha
+ #if !HAVE_DECL_GETRANDOM
+ #  ifndef __NR_getrandom
+ #    if defined __x86_64__
+-#      define __NR_getrandom 318
++#      if defined __ILP32__
++#        define __NR_getrandom 1073742142
++#      else
++#        define __NR_getrandom 318
++#      endif
+ #    elif defined(__i386__)
+ #      define __NR_getrandom 355
+ #    elif defined(__arm__)
+@@ -129,7 +137,11 @@ static inline pid_t gettid(void) {
+ #if !HAVE_DECL_NAME_TO_HANDLE_AT
+ #  ifndef __NR_name_to_handle_at
+ #    if defined(__x86_64__)
+-#      define __NR_name_to_handle_at 303
++#      if defined __ILP32__
++#        define __NR_name_to_handle_at 1073742127
++#      else
++#        define __NR_name_to_handle_at 303
++#      endif
+ #    elif defined(__i386__)
+ #      define __NR_name_to_handle_at 341
+ #    elif defined(__arm__)
+@@ -164,7 +176,11 @@ static inline int name_to_handle_at(int
+ #if !HAVE_DECL_SETNS
+ #  ifndef __NR_setns
+ #    if defined(__x86_64__)
+-#      define __NR_setns 308
++#      if defined __ILP32__
++#        define __NR_setns 1073742132
++#      else
++#        define __NR_setns 308
++#      endif
+ #    elif defined(__i386__)
+ #      define __NR_setns 346
+ #    elif defined(__arc__)
+@@ -199,7 +215,11 @@ static inline pid_t raw_getpid(void) {
+ #if !HAVE_DECL_RENAMEAT2
+ #  ifndef __NR_renameat2
+ #    if defined __x86_64__
+-#      define __NR_renameat2 316
++#      if defined __ILP32__
++#        define __NR_renameat2 1073742140
++#      else
++#        define __NR_renameat2 316
++#      endif
+ #    elif defined __arm__
+ #      define __NR_renameat2 382
+ #    elif defined __aarch64__
+@@ -286,7 +306,11 @@ static inline key_serial_t request_key(c
+ #if !HAVE_DECL_COPY_FILE_RANGE
+ #  ifndef __NR_copy_file_range
+ #    if defined(__x86_64__)
+-#      define __NR_copy_file_range 326
++#      if defined __ILP32__
++#        define __NR_copy_file_range 1073742150
++#      else
++#        define __NR_copy_file_range 326
++#      endif
+ #    elif defined(__i386__)
+ #      define __NR_copy_file_range 377
+ #    elif defined __s390__
