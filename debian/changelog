@@ -1,4 +1,9 @@
-<<<<<<< HEAD
+systemd (235-1.1) unstable; urgency=medium
+
+  * Rebase on debian/master
+
+ -- Denis Bychkov <manover@gmail.com>  Sun, 08 Oct 2017 08:19:01 -0400
+
 systemd (234-3) unstable; urgency=medium
 
   [ Martin Pitt ]
@@ -69,13 +74,6 @@ systemd (234-2.1) unstable; urgency=high
     processed (Closes: #872598).
 
  -- Cyril Brulebois <kibi@debian.org>  Wed, 23 Aug 2017 20:41:33 +0200
-=======
-systemd (234-2.1) unstable; urgency=medium
-
-  * Rebase on debian/234-1
-
- -- Denis Bychkov <manover@gmail.com>  Thu, 13 Jul 2017 12:36:02 -0400
->>>>>>> Rebase on debian/234-2
 
 systemd (234-2) unstable; urgency=medium
 
