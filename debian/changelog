@@ -1,8 +1,11 @@
 systemd (234-2.1) unstable; urgency=medium
 
-  * Rebase on debian/234-1
+  * Rebase on debian/234-2
+  * Adapt gnu-efi to meson build
+  * Add x32 arch to missing syscalls header
+  * Drop x32 FTBF time format related fix
 
- -- Denis Bychkov <manover@gmail.com>  Thu, 13 Jul 2017 12:36:02 -0400
+ -- Denis Bychkov <manover@gmail.com>  Sun, 23 Jul 2017 22:33:58 -0400
 
 systemd (234-2) unstable; urgency=medium
 
